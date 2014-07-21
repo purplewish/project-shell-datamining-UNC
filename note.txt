@@ -1,5 +1,0 @@
-
-=Online resource
-
-http://www.r-bloggers.com/a-brief-tour-of-the-trees-and-forests/
-http://www.r-bloggers.com/my-intro-to-multiple-classification-with-random-forests-conditional-inference-trees-and-linear-discriminant-analysis/
