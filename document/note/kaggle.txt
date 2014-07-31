@@ -1,0 +1,74 @@
+=Project goal:
+Apply machine learning techniques to identify sweetspots(top quartile most productive areas) in a play with limited amount of geological data (subsurface factors).
+
+
+=Data
+1.Collected in 2012 - 2013
+2.Geological data (Core + Log) [as input to build the model]
+3.Production data [train and test the model]
+4.Completion data [as controls on production]
+5.Extrapolation and smoothing
+
+2.Geological data
+-Core (83 wells) from CoreLabs
+--Geochemical Analysis (19 fields)
+--RCA (29 fields)
+--SCAL (43 fields)
+--Shale Gas Analysis (246 fields)
+
+-Log
+--IHS(444 wells)
+--CoreLabs(71 wells)
+**Note: Log data reliability IHS < CoreLabs
+
+3.Production data (5814 wells UWI#)
+-From IHS
+--Filter criteria
+---Producing Zone=Eagle Ford
+---Production began after Jan 2008
+
+4.Completion data (5513 wells)
+-Filter criteria (same as above)
+-Data were sparse. 
+--e.g. 38% has lateral length, 40% has # of frac stages.
+
+5.Extrapolation and smoothing (Geographical features) (57 core well features and 38 well log features)
+-Basic interpolation
+--Kriging + kernel density estimation
+---Kriging is more accurate and prefered
+---Kernel density estimation will be used only when kriging failed but geographical correlation existed
+---Ensembles of kriging performed on subsamples of data were used when the number of data points would have slowed the procedure
+
+-Advanced interpolation
+--Core well and well log features are merged into a single geological feature dataset
+--The features in this geological dataset are interpolated to fill in missing value and separately added onto the well dataset
+--First-pass feature predictions are generated on the well dataset, using random forests trained on the geological dataset
+--Out-of-bag features predictions are generated for the geological dataset using random forests and multiple train/test splits
+--The residual of these out-of-bag predictions is interpolated onto the well dataset and used to refine the first-pass feature predictions.
+
+*Note: 
+--Details for geographical interpolation are in section 3.2 of Kaggle phase-1 report.
+--Kaggle spend >6 weeks on data cleanup and pre-processing
+
+
+=Random forest model
+-Split into random training and test data sets
+--The wells used to train the model are geographically separated from the test wells
+-Each producer(5814) was tagged with its nearest cored well
+--when create a test-train split, all producer wells tagged to a specific cored well are assigned to the same split
+-Using extrapolated maps from log+core features, a RF was created for each of the 5814 production wells.
+
+=Results
+1.Variable importance chart 
+-for oil production (Geological + completion parameters)
+-for gas production (Geological + completion parameters)
+2.Identify top quartile producer given extrapolated geological data
+-True+
+-false+
+-false-
+3.Time accelaeration over a standard benchmark, which is krigged production.
+
+
+
+
+

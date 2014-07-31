@@ -1,0 +1,35 @@
+=RF vs Boosting
+
+-Speed
+Random Forest can run in parallel and they are much faster to train,
+Boosting is an iterative algorithm instead. However, Boosting might converge early iteration-wise.
+
+-Potential Problem
+Boosting might overfit when there are many noisy features but Random Forest also does.
+ 
+-Similarity
+Their target is almost similar, produce many different weak learners 
+as much different as possible from each others.
+
+-Difference
+Random Forests tackle the problem with randomization 
+Boosting focuses on mis-classified examples of previous models to build a different one
+
+Random forest and boosting introduction:
+https://class.coursera.org/datasci-001/lecture
+
+
+=RF pitfall
+
+-RF tend to use the nearest neighbour approach, therefore when predictors are not near the predictors the model has learned, the prediction not be good
+-RF may also be over fitting, but could be reduced by "ensemble learning" (many trees: generate many classifiers and aggregate their results). 
+
+
+@@ensemble leaning
+=Boosting (Shapire 1998)
+-Successive trees given extra weight to points incorrectly predicted by earlier predictors. 
+-In the end, a weighted vote is taken for prediction.
+
+=Bagging of classification tree (Breiman 1996)
+-Successive trees do not depend on earlier trees (each is independently constructed using bootstrap sample of the data set). 
+-In the end, a simple majority vote is taken for prediction.
