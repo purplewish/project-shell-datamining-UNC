@@ -1,5 +1,6 @@
 
 options(scipen=999)  # remove scientific notation
+require("sqldf")
 
 # Set data directory -----------------------------------------------------------------------------------
 path.old <- getwd()
@@ -8,8 +9,8 @@ setwd(path)
 
 
 
-
 # Load production data ---------------------------------------------------------------------------------
+## Load production
 a <- read.csv("011_Prod_IPCumNorm.csv", header=T, as.is=T)
 #length(unique(a$API))  # 5814
 #b <- a[a$Norm.1.yr...Num.of.Mos==12,]  # 3012 wells
@@ -18,15 +19,33 @@ prod <- a[, keep]
 names(prod)[3] <- "oil.12m"
 names(prod)[4] <- "gas.12m"
 
+## Load well location
+a <- read.csv("012_Prod_Well.csv", header=T, as.is=T)
+keep <- c(7, 15, 16)
+loc <- a[, keep]  # 6314
+names(loc)[2] <- "Latitude"
+names(loc)[3] <- "Longitude"
+loc <- loc[complete.cases(loc),]  # 6311 after removing NA
+loc.uniq <- loc[!duplicated(loc[,1]),]  # 5811 uniq
+#write.table(loc.uniq, file="./analysis/EagleFordProdLoc.csv", row.names=F, sep=",")
+
 
 # prod.gas <- prod[prod[,1]=='G', c(1,2,4)] # 2373
 # prod.gas <- prod.gas[prod.gas[,3]>0,]     # 2366 
 # length(unique(prod.gas[,2]))              # 2223 unique
 
+## Join production with location for oil well
 prod.oil <- prod[prod[,1]=='O', 2:3]        # 3924
-prod.oil.uniq <- prod.oil[!duplicated(prod.oil[,1]),]  #3670 unique ID
-prod.oil <- prod.oil.uniq[complete.cases(prod.oil.uniq),]  # 3475 remove NA
-write.table(prod.oil, file="./analysis/EagleFordRawOilUniq.csv", row.names=F, sep=",")
+prod.oil <- prod.oil[complete.cases(prod.oil), ]  # 3660 check completeness then rm duplicates, must follow the order
+prod.oil.uniq <- prod.oil[!duplicated(prod.oil[,1]),]  #3494 unique ID
+prod_oil_uniq <- prod.oil.uniq
+oil.prod.loc <- sqldf("Select * from prod_oil_uniq Left Join prod_loc_uniq using(API)")  # 3494
+#write.table(oil.prod.loc, file="./analysis/EagleFordRawOilUniq.csv", row.names=F, sep=",")
+
+
+
+prod.all.uniq <- prod[!duplicated(prod[,2]),]  #5814 unique ID
+##write.table(prod.all.uniq, file="./analysis/EagleFordRawOilGasUniq.csv", row.names=F, sep=",")
 
 
 
