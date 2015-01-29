@@ -12,15 +12,18 @@ library(dplyr)
 #---------------------------------------------------------------------------------------------------------------------------------
 ## Prepare Dataset for RF model
 
+# Load predictors Xs
 setwd("C:/Apps/projects/DataMiningUNC/Kaggle/Final/Documentation and Input Files September 22 2014/Documentation and Input Files")
 
-# Load predictors Xs
 x <- read.csv("EagleFordOilInput.csv")
 x <- distinct(x, Uwi)  # rm duplicate records (5222 x 35)
 x <- select(x, -Latitude, -Longitude, -Producer.EstimatedLength.Joined)
 x.vars <- names(x)
+x.vars <- x.vars[-1]  # rm Uwi
 
 # Load response Y
+setwd("C:/Apps/projects/DataMiningUNC/Kaggle/Final/RulesBasedApproach Oct 8/RulesBasedApproach Oct 8")
+
 y <- read.csv("Rules features using recent and Jan 2014 data.csv")
 y <- select(y, Uwi, Target)  # 2631 x 2
 
@@ -278,9 +281,53 @@ ggplot(data=dat2, aes(x=Index, y=value, colour=variable)) +
 #-------------------------------------------------------------------------------------------------------------------------------------
 # RF model: variables importance 
 
-# size of trees in an ensemble
-hist(treesize(rf.Q))
-varImpPlot(rf.Q)
-varImp1 <- sort(rf.Q$importance[,5], dec=T)
-plot(varImp1, type="h")
+# Pars
+m <- 5  # mtry=sqrt(31)=5
+no.tree <- 500
+train.perc <- 1
 
+# Split data into train/test set
+set.seed(777)
+train <- sample_frac(all, train.perc, replace=F)
+test  <- dplyr::setdiff(all, train)
+  
+#######################################################################################################
+rf.model <- randomForest(formula.class2, data=train, importance=T, mtry=m, do.trace=500, ntree=no.tree)  
+#######################################################################################################
+
+# Importance data
+d <- data.frame(rownames(importance(rf.model)),round(importance(rf.model),2))
+# measure 1:mean decrease in accuracy  2:mean decrease in gini
+names(d)[c(1,ncol(d)-1,ncol(d))] <- c("Predictor","mda","mdg")  
+rownames(d) <- NULL
+
+pred.acc  <- select(d, Predictor, mda)
+pred.gini <- select(d, Predictor, mdg)
+
+# Var importance plot function
+importancePlot <- function(d,ylb,fontsize){
+  fontsize <- as.numeric(fontsize)
+  d <- d[order(d[,2],decreasing=T),]
+  d$Predictor <- factor(as.character(d$Predictor),levels=rev(as.character(d$Predictor)))
+  rownames(d) <- NULL
+  abs.min <- abs(min(d[,2]))
+  g1 <- ggplot(data=d,aes_string(x="Predictor",y=ylb,group="Predictor",colour="Predictor",fill="Predictor")) + geom_bar(stat="identity") + theme_grey(base_size=fontsize)
+  #g1 <- ggplot(data=d,aes_string(x="Predictor",y=ylb,group="Predictor",color="black",fill="black")) + geom_bar(stat="identity") + theme_grey(base_size=fontsize)
+  if(ylb=="mda") g1 <- g1 + labs(y="Mean decrease in accuracy") else if(ylb=="mdg") g1 <- g1 + labs(y="Mean decrease in Gini")
+  g1 <- g1 + theme(axis.text.x = element_text(angle=90,hjust=1,vjust=0.4)) + geom_hline(yintercept=abs.min,linetype="dashed",colour="black") + coord_flip()
+  print(g1)
+}
+
+importancePlot(d=pred.acc, ylb="mda", 20)
+importancePlot(d=pred.gini, ylb="mdg", 20)
+
+#pdf(file = file, width=11, height=8.5)
+#dev.off()
+
+
+# varImpPlot(rf.model, n.var=10)
+# varImp1 <- sort(rf.model$importance[,5], dec=T)
+# plot(varImp1, type="h")
+
+# size of trees in an ensemble
+# hist(treesize(rf.model))
