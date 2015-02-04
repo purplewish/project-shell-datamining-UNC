@@ -1,6 +1,6 @@
 wd <- getwd()
-##################################################################################################################################
 
+##################################################################################################################################
 ## Load data file & prepare dataset for RF model
 # Load predictors Xs
 setwd("C:/Apps/projects/DataMiningUNC/Kaggle/Final/Documentation and Input Files September 22 2014/Documentation and Input Files")
@@ -30,4 +30,5 @@ formula.class1 <- formula(paste("Target.Q~", paste(x.vars,collapse="+")))  # cla
 formula.class2 <- formula(paste("Target.Q4~", paste(x.vars,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
 
 ##################################################################################################################################
+
 setwd(wd)

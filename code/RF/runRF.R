@@ -18,7 +18,7 @@ runRF <- function(dat, train.pct, model, m, no.tree, nrep=1, ntrace=500){
 # Returns:
 #	1. Prediction accuracy on test data; 2. Last RF model object
 	sol <- NULL
-	# Predication data frame (Accy: classification accuracy; TP/TN: True+/True-)
+	# Prediction data frame (Accy: classification accuracy; TP/TN: True+/True-)
 	pred.df <- data.frame(Index=1:nrep,Accy=NA,TP=NA,TN=NA) 
 
 	for(i in 1:nrep){
