@@ -37,7 +37,7 @@ plotRFVarImp <- function(rf.mod){
                      axis.text.x=element_text(angle=0,hjust=1,vjust=0.4,colour='black'),
                      axis.text.y= element_text(colour='black', size=25)) + 
           	     geom_hline(yintercept=abs.min,linetype="dashed",colour="black") + coord_flip()
-	print(g1)
+		print(g1)
 	}
 
 	importancePlot(d=pred.acc, ylb="mda", 20)
