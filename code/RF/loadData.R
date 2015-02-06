@@ -2,6 +2,23 @@ wd <- getwd()
 
 ##################################################################################################################################
 ## Load data file & prepare dataset for RF model
+
+## Load wells' production start date 
+setwd("C:/Apps/projects/DataMiningUNC/Data")
+a <- read.csv("012_Prod_Well.csv", as.is=T)
+a <- a %>% select(Entity, API, Surface.Latitude, Surface.Longitude) %>% filter(!is.na(API))
+
+b <- read.csv("013_Prod_Header.csv", as.is=T)
+b <- b %>% select(Entity, Date.Production.Start) %>% filter(!is.na(Date.Production.Start))  
+
+ab <- left_join(a, b, by="Entity")
+ab <- ab %>% distinct(API) %>% select(API, Date.Production.Start) %>% rename(Uwi=API)
+ab$Date.Production.Start <- as.Date(ab$Date.Production.Start, format="%Y-%m-%d")
+prod.date <- ab 
+
+#---------------------------------------------------------------------------------------------------------------------------------
+## Load Xs and Y
+
 # Load predictors Xs
 setwd("C:/Apps/projects/DataMiningUNC/Kaggle/Final/Documentation and Input Files September 22 2014/Documentation and Input Files")
 
@@ -28,6 +45,12 @@ all <- mutate(all, Target.Q4=factor(Target.Q=="Q4"))  # class: Q4 ~Q4 TRUE FALSE
 # Classification formula
 formula.class1 <- formula(paste("Target.Q~", paste(x.vars,collapse="+")))  # class:Q1 Q2 Q3 Q4
 formula.class2 <- formula(paste("Target.Q4~", paste(x.vars,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+
+#---------------------------------------------------------------------------------------------------------------------------------
+## Add production date to data all
+
+all <- left_join(all, prod.date, by="Uwi")
+all <- all %>% filter(!is.na(Date.Production.Start))
 
 ##################################################################################################################################
 
