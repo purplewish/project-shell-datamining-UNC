@@ -11,7 +11,7 @@ setwd("C:/Apps/projects/DataMiningUNC/Code/RF/results")
 #-------------------------------------------------------------------------------------------------------------------------
 ## RF model on one set of pars 
 set.seed(777)
-rf <- runRF(dat=all, train.pct=0.75, model=formula.class2, m=5, no.tree=500, nrep=1)
+rf <- runRF(dat=all, train.pct=0.25, model=formula.class2, m=5, no.tree=500, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
 
@@ -67,5 +67,22 @@ rf.mod <- rf[[2]]
 
 plotRFVarImp(rf.mod)
 plotRFVarImp2(rf.mod)
+
+
+#-------------------------------------------------------------------------------------------------------------------------------------
+# Prediction based on time cutoff
+
+# Cutoff=q1
+date.q <- summary(all$Date.Production.Start) # check quantiles of production starting date
+q1 <- filter(all, Date.Production.Start < date.q[2])
+q1.test <- filter(all, Date.Production.Start > date.q[2]+365)
+
+set.seed(777)
+rf <- runRF2(train=q1, test=q1.test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+
+plotRFOOBErr(rf.mod)
+
 
 
