@@ -70,19 +70,110 @@ plotRFVarImp2(rf.mod)
 
 
 #-------------------------------------------------------------------------------------------------------------------------------------
-# Prediction based on time cutoff
+# Prediction based on timeline (cutoff at time point)
 
-# Cutoff=q1
-date.q <- summary(all$Date.Production.Start) # check quantiles of production starting date
-q1 <- filter(all, Date.Production.Start < date.q[2])
-q1.test <- filter(all, Date.Production.Start > date.q[2]+365)
+# Cutoff=q1, test well > cutoff+365
+q <- summary(all$Date.Production.Start) # check quantiles of production starting date
+train <- filter(all, Date.Production.Start < q[2]) # early 25% wells
+test <- filter(all, Date.Production.Start > q[2]+365) # ~ 10% wells 
 
 set.seed(777)
-rf <- runRF2(train=q1, test=q1.test, model=formula.class2, m=5, no.tree=500)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # rf model obj
-
 plotRFOOBErr(rf.mod)
 
 
+#-----
+# Cutoff=q1, test well = rest
+q <- summary(all$Date.Production.Start) # check quantiles of production starting date
+train <- filter(all, Date.Production.Start < q[2]) # early 25% wells
+test <- setdiff(all, train) # rest wells
 
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+
+# randome sample 25%
+train <- sample_frac(all, 0.25, replace=F)
+test <- setdiff(all, train)
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+
+#-----
+# Cutoff=5% 10% 15% 20% test well = rest
+q <- quantile(as.numeric(all$Date.Production.Start),  probs=c(5, 10, 15, 20, 25, 30, 35, 40, 50)/100)
+class(q)="Date"
+
+#5%
+train <- filter(all, Date.Production.Start < q[1]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[1]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+#-----
+#10%
+train <- filter(all, Date.Production.Start < q[2]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[2]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+#-----
+#15%
+train <- filter(all, Date.Production.Start < q[3]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[3]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+#-----
+#20%
+train <- filter(all, Date.Production.Start < q[4]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[4]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+#-----
+#30%
+train <- filter(all, Date.Production.Start < q[6]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[6]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+#-----
+#35%
+train <- filter(all, Date.Production.Start < q[7]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[7]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
