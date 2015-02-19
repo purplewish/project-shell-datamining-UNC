@@ -3,7 +3,7 @@ wd <- getwd()
 ##################################################################################################################################
 ## Load data file & prepare dataset for RF model
 
-## Load wells' production start date 
+## Load wells' production start date and location
 setwd("C:/Apps/projects/DataMiningUNC/Data")
 a <- read.csv("012_Prod_Well.csv", as.is=T)
 a <- a %>% select(Entity, API, Surface.Latitude, Surface.Longitude) %>% filter(!is.na(API))
@@ -12,9 +12,9 @@ b <- read.csv("013_Prod_Header.csv", as.is=T)
 b <- b %>% select(Entity, Date.Production.Start) %>% filter(!is.na(Date.Production.Start))  
 
 ab <- left_join(a, b, by="Entity")
-ab <- ab %>% distinct(API) %>% select(API, Date.Production.Start) %>% rename(Uwi=API)
+ab <- ab %>% distinct(API) %>% select(-Entity) %>% rename(Uwi=API, Latitude=Surface.Latitude, Longitude=Surface.Longitude)
 ab$Date.Production.Start <- as.Date(ab$Date.Production.Start, format="%Y-%m-%d")
-prod.date <- ab 
+prod.date.loc <- ab 
 
 #---------------------------------------------------------------------------------------------------------------------------------
 ## Load Xs and Y
@@ -49,7 +49,7 @@ formula.class2 <- formula(paste("Target.Q4~", paste(x.vars,collapse="+"))) # cla
 #---------------------------------------------------------------------------------------------------------------------------------
 ## Add production date to data all
 
-all <- left_join(all, prod.date, by="Uwi")
+all <- left_join(all, prod.date.loc, by="Uwi")
 all <- all %>% filter(!is.na(Date.Production.Start))
 
 ##################################################################################################################################

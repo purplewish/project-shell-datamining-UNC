@@ -11,9 +11,13 @@ setwd("C:/Apps/projects/DataMiningUNC/Code/RF/results")
 #-------------------------------------------------------------------------------------------------------------------------
 ## RF model on one set of pars 
 set.seed(777)
-rf <- runRF(dat=all, train.pct=0.25, model=formula.class2, m=5, no.tree=500, nrep=1)
+rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=5, no.tree=500, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
+
+## Plot sweet-spots
+target <- select(all, Uwi, Target.Q4, Latitude, Longitude)
+plotSweetspot(rf.mod, target)
 
 
 #-------------------------------------------------------------------------------------------------------------------------
@@ -109,11 +113,11 @@ plotRFOOBErr(rf.mod)
 
 
 #-----
-# Cutoff=5% 10% 15% 20% test well = rest
+# Cutoff=5% 10% 15% 20% ... test well = rest
 q <- quantile(as.numeric(all$Date.Production.Start),  probs=c(5, 10, 15, 20, 25, 30, 35, 40, 50)/100)
 class(q)="Date"
 
-#5%
+#5% Accy=0.773
 train <- filter(all, Date.Production.Start < q[1]) # early 5% wells
 test <- filter(all, Date.Production.Start > q[1]+365) # ~ 10% wells 
 
@@ -124,7 +128,7 @@ rf.mod <- rf[[2]]  # rf model obj
 plotRFOOBErr(rf.mod)
 
 #-----
-#10%
+#10% Accy=0.802
 train <- filter(all, Date.Production.Start < q[2]) # early 5% wells
 test <- filter(all, Date.Production.Start > q[2]+365) # ~ 10% wells 
 
@@ -135,7 +139,7 @@ rf.mod <- rf[[2]]  # rf model obj
 plotRFOOBErr(rf.mod)
 
 #-----
-#15%
+#15% Accy=0.817
 train <- filter(all, Date.Production.Start < q[3]) # early 5% wells
 test <- filter(all, Date.Production.Start > q[3]+365) # ~ 10% wells 
 
@@ -146,9 +150,20 @@ rf.mod <- rf[[2]]  # rf model obj
 plotRFOOBErr(rf.mod)
 
 #-----
-#20%
+#20% Accy=0.811
 train <- filter(all, Date.Production.Start < q[4]) # early 5% wells
 test <- filter(all, Date.Production.Start > q[4]+365) # ~ 10% wells 
+
+set.seed(777)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+sol <- rf[[1]]  # Pred accuracy on test data
+rf.mod <- rf[[2]]  # rf model obj
+plotRFOOBErr(rf.mod)
+
+#-----
+#25% Accy=0.816
+train <- filter(all, Date.Production.Start < q[5]) # early 5% wells
+test <- filter(all, Date.Production.Start > q[5]+365) # ~ 10% wells 
 
 set.seed(777)
 rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
@@ -177,3 +192,9 @@ rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # rf model obj
 plotRFOOBErr(rf.mod)
+
+#-------------------
+# 5%~25% results
+accy<-data.frame(train.pct=seq(5,25,5), accy=c(0.77,0.80,0.82,0.81,0.82))
+plotLine(accy, "Percentage of Training Data", "Test Classification Accuracy")
+

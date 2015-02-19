@@ -14,6 +14,8 @@ plotRFVarImp <- function(rf.mod){
 
   # Importance data
   dat <- data.frame(rownames(importance(rf.mod)),round(importance(rf.mod),2))
+  dat[,1] <- gsub("(Core.|.Kriged|.Joined)",'',dat[,1])  # strip unneccsary characters
+    
   names(dat)[c(1,ncol(dat)-1,ncol(dat))] <- c("Predictor","mda","mdg")
   rownames(dat) <- NULL
 
@@ -31,10 +33,13 @@ plotRFVarImp <- function(rf.mod){
     abs.min <- abs(min(d[,2]))
 		
     g1 <- ggplot(data=d,aes_string(x="Predictor",y=ylb,group="Predictor")) + 
-          geom_bar(stat="identity", colour="#639f89", fill="#639f89") + theme_grey(base_size=fontsize)
+          geom_bar(stat="identity", colour="#d62d20", fill="#d62d20") + theme_grey(base_size=fontsize)
+          #geom_bar(stat="identity", colour="#639f89", fill="#639f89") + theme_grey(base_size=fontsize)
 
-    if(ylb=="mda")      g1 <- g1 + labs(y="Mean decrease in accuracy") 
-    else if(ylb=="mdg") g1 <- g1 + labs(y="Mean decrease in Gini")
+    #if(ylb=="mda")      g1 <- g1 + labs(y="Mean decrease in accuracy") 
+    #else if(ylb=="mdg") g1 <- g1 + labs(y="Mean decrease in Gini")
+    g1 <- g1 + labs(y="Variable Importance") # Simplify for presentation purpose
+    
 
     g1 <- g1 + theme(axis.title=element_text(size=25,face="bold"), 
                      axis.text.x=element_text(angle=0,hjust=1,vjust=0.4,colour='black'),
@@ -136,7 +141,6 @@ plotRFAcc <- function(sol.all){
 }
 
 
-
 # Plot accuracy at a fix training % (e.g. 70%)
 # dat.train.70pct <- read.csv("./train_perc_0.7_errrate.csv", header=T)
 #   dat2 <- dat.train.70pct[,-2]
@@ -159,6 +163,79 @@ plotRFAcc <- function(sol.all){
 #     legend.justification=c(1,0), legend.position=c(1,0),
 #     legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
 #   )
+
+
+
+#------------------------------------------------------------------------------------------------------
+# Plot sweet-spots
+#------------------------------------------------------------------------------------------------------
+plotSweetspot <- function(rf.mod, target){
+  # Plot Sweetspot
+  #
+  # Args:
+  #   rf.mod: a rf object that trained through data all
+  #   target: data set with 1) true top quartile indicator/target 2) Longitude and Latitude
+  #
+  # Returns:
+  #   Sweetspot plot with true+, false-, false+ 
+  
+  # Predicted results
+  a <- rf.mod$predicted
+  b <- as.numeric(names(a))
+  c <- data.frame(b, a)
+  d <- arrange(c, b)  # order predicted value from RF model
+  dat <- cbind(target, pred=d[,2])
+  
+  overlap <- dat %>% filter(Target.Q4==pred & pred==TRUE) %>% select(Uwi)  # true+
+  top.q <- dat %>% 
+            filter(Target.Q4==TRUE | pred==TRUE) %>% 
+            mutate(type=ifelse(Target.Q4==pred, "Overlap", ifelse(pred==TRUE,"Pred","True")))
+  
+  g <- ggplot(top.q, aes(x=Longitude, y=Latitude, colour=type)) + geom_point(size=4) +  
+        scale_colour_manual(values=c("#f05032", "#00539e", "#fec325")) +
+        theme(
+              #legend.title=element_blank(),
+              #legend.text = element_text(size = 20),
+              #legend.position=c(.1, .9),
+              #legend.position="none",
+              #panel.background = element_blank(),
+              axis.title.x = element_text(size=28),
+              axis.title.y = element_text(size=28)
+        )
+  
+  print(g) 
+}
+
+
+
+#------------------------------------------------------------------------------------------------------
+# Line Plot 
+#------------------------------------------------------------------------------------------------------
+plotLine <- function(dat, xlab, ylab){
+  # Plot x-y line 
+  #
+  # Args:
+  #   dat: a data frame, x=1st col, y=2nd col
+  #
+  # Returns:
+  #   x-y line plot
+  a <- names(dat)
+  g <- ggplot(data=dat, aes_string(x=a[1],y=a[2])) + 
+        aes(colour="#d62d20") + geom_line(size=1.1) + geom_point(size=4) + ylim(0.5,1) +
+        xlab(xlab) + ylab(ylab) + 
+        theme(legend.position="none",
+              axis.title.x = element_text(size=24),
+              axis.title.y = element_text(size=24),
+              axis.text.x = element_text(colour="grey20",size=15),
+              axis.text.y = element_text(colour="grey20",size=15),
+              legend.title=element_blank(),
+              legend.text = element_text(size = 20),
+              legend.justification=c(1,0), legend.position=c(1,0),
+              legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
+              )
+  
+  print(g)
+}
 
 
 #------------------------------------------------------------------------------------------------------
