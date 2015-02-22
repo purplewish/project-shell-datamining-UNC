@@ -21,6 +21,72 @@ plotSweetspot(rf.mod, target)
 
 
 #-------------------------------------------------------------------------------------------------------------------------
+## RF model on selected important vars
+nrep=50;
+top.n <- 3  # top.n important vars 
+train.pct.seq <- seq(0.2,0.8,0.1); 
+
+sols <- NULL
+set.seed(777)
+for (train.pct in train.pct.seq){
+  
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=500, nrep=nrep)
+  sol <- data.frame(rf[[1]], method="all")  # Pred accuracy on test data
+  rf.mod <- rf[[2]]   # Last rf model obj
+
+  dat <- data.frame(rownames(importance(rf.mod)),round(importance(rf.mod),2))
+  names(dat)[c(1,ncol(dat)-1,ncol(dat))] <- c("Predictor","mda","mdg")
+  rownames(dat) <- NULL
+  pred.accy <- dat %>% select(Predictor, mda) %>% arrange(desc(mda))  # mean decrease in accuracy
+  pred.gini <- dat %>% select(Predictor, mdg) %>% arrange(desc(mdg))  # mean decrease in gini
+
+  sel.vars.gini <- pred.gini$Predictor[1:top.n]  
+  sel.vars.accy <- pred.accy$Predictor[1:top.n]  
+  
+  formula.class.imp.gini <- formula(paste("Target.Q4~", paste(sel.vars.gini,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+  formula.class.imp.accy <- formula(paste("Target.Q4~", paste(sel.vars.accy,collapse="+")))
+  
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class.imp.gini, m=5, no.tree=500, nrep=nrep)
+  sol.gini <- data.frame(rf[[1]], method="gini.sel.vars")  # Pred accuracy on test data
+  rf.mod.gini <- rf[[2]]   # Last rf model obj
+  
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class.imp.accy, m=5, no.tree=500, nrep=nrep)
+  sol.accy <- data.frame(rf[[1]], method="accy.sel.vars")  # Pred accuracy on test data
+  rf.mod.accy <- rf[[2]]   # Last rf model obj
+  
+  sols <- rbind(sols, sol, sol.gini, sol.accy)
+}
+
+# saveRDS(sols, "top10_imp_vars.rds")
+#sols.top10vars <- readRDS("top10_imp_vars.rds")
+
+# saveRDS(sols, "top5_imp_vars.rds")
+# sols.top5vars <- readRDS("top5_imp_vars.rds")
+# 
+# saveRDS(sols, "top3_imp_vars.rds")
+# sols.top3vars <- readRDS("top3_imp_vars.rds")
+
+# top10.diff <- setdiff(sel.vars.accy, sel.vars.gini)  # n.top=10
+# saveRDS(top10.diff, "top10_imp_var_diff_accy_gini.rds")
+# top10.diff.accy.gini <- readRDS("top10_imp_var_diff_accy_gini.rds")
+
+# top10.diff <- setdiff(sel.vars.gini, sel.vars.accy)  # n.top=10
+# saveRDS(top10.diff, "top10_imp_var_diff_gini_accy.rds")
+# top10.diff.gini.accy <- readRDS("top10_imp_var_diff_gini_accy.rds")
+
+# saveRDS(sel.vars.accy, "top10_accy.rds")
+# saveRDS(sel.vars.gini, "top10_gini.rds")
+# top10.accy <- readRDS("top10_accy.rds")
+# top10.gini <- readRDS("top10_gini.rds")
+
+# overlap <- intersect(sel.vars.accy,sel.vars.gini)
+# saveRDS(overlap, "top10_overlap.rds")
+# top10.overlap <- readRDS("top10_overlap.rds")
+# accy.add <- setdiff(sel.vars.accy, top10.overlap) # overlap Xs rank: 1,2,3,4,8
+# gini.add <- setdiff(sel.vars.gini, top10.overlap) # overlap Xs rank: 1,2,6,7,10
+
+
+#-------------------------------------------------------------------------------------------------------------------------
 ## RF model: effect of number of trees (select no.tree=500)
 num.tree <- 3000
 
@@ -198,3 +264,17 @@ plotRFOOBErr(rf.mod)
 accy<-data.frame(train.pct=seq(5,25,5), accy=c(0.77,0.80,0.82,0.81,0.82))
 plotLine(accy, "Percentage of Training Data", "Test Classification Accuracy")
 
+
+#-------------------------------------------------------------------------------------------------------------------------------
+# Correlation study
+library(ellipse)
+
+X <- select(all, -Uwi, -Target, -Target.Q, -Target.Q4, -Latitude, -Longitude, -Date.Production.Start)
+corr <- as.matrix(cor(X))
+h.corr <- which(corr>0.8&corr<1, arr.in=TRUE)
+
+X.none.overlap <- select(all, match(accy.add, names(all)), match(gini.add, names(all)))
+corr.none.overlap <- as.matrix(cor(X.none.overlap))
+colnames(corr.none.overlap)=NULL
+rownames(corr.none.overlap)=NULL
+plotcorr(corr.none.overlap, numbers=T)
