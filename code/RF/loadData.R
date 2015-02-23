@@ -4,7 +4,8 @@ wd <- getwd()
 ## Load data file & prepare dataset for RF model
 
 ## Load wells' production start date and location
-setwd("C:/Apps/projects/DataMiningUNC/Data")
+setwd(file.path(repo_path, "Data"))
+
 a <- read.csv("012_Prod_Well.csv", as.is=T)
 a <- a %>% select(Entity, API, Surface.Latitude, Surface.Longitude) %>% filter(!is.na(API))
 
@@ -20,7 +21,7 @@ prod.date.loc <- ab
 ## Load Xs and Y
 
 # Load predictors Xs
-setwd("C:/Apps/projects/DataMiningUNC/Kaggle/Final/Documentation and Input Files September 22 2014/Documentation and Input Files")
+setwd(file.path(repo_path, "Kaggle/Final/Documentation and Input Files September 22 2014/Documentation and Input Files"))
 
 x <- read.csv("EagleFordOilInput.csv")
 x <- distinct(x, Uwi)  # rm duplicate records (5222 x 35)
@@ -29,7 +30,7 @@ x.vars <- names(x)
 x.vars <- x.vars[-1]  # rm Uwi (Uwi isn't a predictor)
 
 # Load response Y
-setwd("C:/Apps/projects/DataMiningUNC/Kaggle/Final/RulesBasedApproach Oct 8/RulesBasedApproach Oct 8")
+setwd(file.path(repo_path, "Kaggle/Final/RulesBasedApproach Oct 8/RulesBasedApproach Oct 8"))
 
 y <- read.csv("Rules features using recent and Jan 2014 data.csv")
 y <- select(y, Uwi, Target)  # 2631 x 2

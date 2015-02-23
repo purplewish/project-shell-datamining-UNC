@@ -1,12 +1,11 @@
 
-setwd("C:/Apps/projects/GitHub/project-shell-datamining-UNC/code/RF")
 source("header.R")
 source("loadData.R")
 source("runRF.R")
 source("plotFuns.R")
 
 # Results directory
-setwd("C:/Apps/projects/DataMiningUNC/Code/RF/results")
+setwd(file.path(repo_path, "Code/RF/results"))
 
 #-------------------------------------------------------------------------------------------------------------------------
 ## RF model on one set of pars 
