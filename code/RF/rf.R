@@ -86,7 +86,7 @@ for (train.pct in train.pct.seq){
 # accy.add <- setdiff(sel.vars.accy, top10.overlap) # overlap Xs rank: 1,2,3,4,8
 # gini.add <- setdiff(sel.vars.gini, top10.overlap) # overlap Xs rank: 1,2,6,7,10
 
-# overlapped vars of top 10 important vars(gini and accy); totally 5 vars are overlapped
+## overlapped vars of top 10 important vars(gini and accy); totally 5 vars are overlapped
 top10.overlap <- readRDS("top10_overlap.rds")  # 5 overlaped vars
 formula.class.top10overlap <- formula(paste("Target.Q4~", paste(top10.overlap,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
 
