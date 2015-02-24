@@ -1,4 +1,6 @@
 
+# code path
+setwd("Z:/Mingqi.Wu/GitHup/project-shell-datamining-UNC/code/RF")
 source("header.R")
 source("loadData.R")
 source("runRF.R")
@@ -80,9 +82,32 @@ for (train.pct in train.pct.seq){
 
 # overlap <- intersect(sel.vars.accy,sel.vars.gini)
 # saveRDS(overlap, "top10_overlap.rds")
-# top10.overlap <- readRDS("top10_overlap.rds")
+# top10.overlap <- readRDS("top10_overlap.rds")  # 5 overlaped
 # accy.add <- setdiff(sel.vars.accy, top10.overlap) # overlap Xs rank: 1,2,3,4,8
 # gini.add <- setdiff(sel.vars.gini, top10.overlap) # overlap Xs rank: 1,2,6,7,10
+
+# overlapped vars of top 10 important vars(gini and accy); totally 5 vars are overlapped
+top10.overlap <- readRDS("top10_overlap.rds")  # 5 overlaped vars
+formula.class.top10overlap <- formula(paste("Target.Q4~", paste(top10.overlap,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+
+nrep=50;
+train.pct.seq <- seq(0.2,0.8,0.1);
+
+sols <- NULL
+set.seed(777)
+for (train.pct in train.pct.seq){
+  
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=500, nrep=nrep)
+  sol <- data.frame(rf[[1]], method="all")  # Pred accuracy on test data
+      
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class.top10overlap, m=5, no.tree=500, nrep=nrep)
+  sol.overlap <- data.frame(rf[[1]], method="top10overlap")  # Pred accuracy on test data
+    
+  sols <- rbind(sols, sol, sol.overlap)
+}
+
+saveRDS(sols, "top10_overlap_vars.rds")
+sols.top10overlap <- readRDS("top10_overlap_vars.rds")
 
 
 #-------------------------------------------------------------------------------------------------------------------------
