@@ -15,6 +15,8 @@ set.seed(777)
 rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=5, no.tree=500, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
+# saveRDS(rf.mod, "rfMod.rds")
+# rf.mod <- readRDS("rfMod.rds")
 
 ## Plot sweet-spots
 target <- select(all, Uwi, Target.Q4, Latitude, Longitude)

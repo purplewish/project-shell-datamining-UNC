@@ -8,6 +8,7 @@ library(randomForest)
 library(ggplot2)
 library(reshape2)
 library(dplyr)
+library(bartMachine)
 
 # path to project folder
 #repo_path = "C:/Apps/projects/DataMiningUNC"
