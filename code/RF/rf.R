@@ -1,6 +1,6 @@
 
 # code path
-setwd("Z:/Mingqi.Wu/GitHup/project-shell-datamining-UNC/code/RF")
+setwd("Z:/GitHup/project-shell-datamining-UNC/code/RF")
 source("header.R")
 source("loadData.R")
 source("runRF.R")

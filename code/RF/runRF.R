@@ -25,7 +25,7 @@ runRF <- function(dat, train.pct, model, m, no.tree, nrep=1, ntrace=500){
 		print(paste0("i=",i, " Train%=", train.pct), quote=F)
 
 		# Split data into train/test set
-		train <- sample_frac(all, train.pct, replace=F)
+		train <- sample_frac(dat, train.pct, replace=F)
 		test  <- dplyr::setdiff(dat, train)
 
 		#################################################################################################
