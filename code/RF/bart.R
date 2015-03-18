@@ -10,17 +10,20 @@ setwd(file.path(repo_path, "Code/RF/results"))
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## bartMachine model on one set of pars 
-set_bart_machine_num_cores(5)  # seed only work for 1 core
+set_bart_machine_num_cores(1)  # seed only work for 1 core
 bart <- bartMachine(all[ ,2:32], all$Target.Q4, num_trees=50, num_burn_in=500, num_iterations_after_burn_in=1000, seed=666)  # 50 trees give best results many times
 
 print(bart)
 #bart$confusion_matrix
-#rf.mod <- readRDS("rfMod.rds")
+rf.mod <- readRDS("rfMod.rds")
 
 
 #-------------------------------------------------------------------------------------------------------------------------------
 # Variables importance ranking
 var.imp <- var_selection_by_permute(bart)
+
+saveRDS(var.imp, "BartVarImp.rds")
+#var.imp <- readRDS("BartVarImp.rds")
 
 print(var.imp$important_vars_local_names)
 print(var.imp$var_true_props_avg)
@@ -37,7 +40,7 @@ for(train.pct in train.pct.seq){
 }
 sol.all
 #saveRDS(sol.all, "BartTrainPct.rds")
-#sol.all <- readRDS("BartTrainPct.rds")
+sol.all <- readRDS("BartTrainPct.rds")
 
 
 # Partial dependence plot

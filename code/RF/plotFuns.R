@@ -96,8 +96,9 @@ plotRFOOBErr <- function(rf.mod){
               axis.text.y = element_text(colour="grey20",size=15),
               legend.title=element_blank(),
               legend.text = element_text(size = 20),
-              legend.justification=c(1,0), legend.position=c(1,0.9),
+              legend.justification=c(1,0), legend.position=c(1,0.86),
               legend.background = element_rect(fill="gray90", size=.5, linetype="dotted"))
+  g1 <- g1 + geom_vline(xintercept = 1500, linetype="longdash")
   print(g1)
 }  
   

@@ -12,11 +12,11 @@ setwd(file.path(repo_path, "Code/RF/results"))
 #-------------------------------------------------------------------------------------------------------------------------
 ## RF model on one set of pars 
 set.seed(777)
-rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=5, no.tree=500, nrep=1)
+rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=5, no.tree=1500, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
-# saveRDS(rf.mod, "rfMod.rds")
-# rf.mod <- readRDS("rfMod.rds")
+# saveRDS(rf.mod, "rfMod_sweetspot.rds")
+rf.mod <- readRDS("rfMod_sweetspot.rds")
 
 ## Plot sweet-spots
 target <- select(all, Uwi, Target.Q4, Latitude, Longitude)
@@ -25,7 +25,7 @@ plotSweetspot(rf.mod, target)
 
 #-------------------------------------------------------------------------------------------------------------------------
 ## RF model on selected important vars
-nrep=50;
+nrep=1;
 top.n <- 3  # top.n important vars 
 train.pct.seq <- seq(0.2,0.8,0.1); 
 
@@ -61,13 +61,13 @@ for (train.pct in train.pct.seq){
 }
 
 # saveRDS(sols, "top10_imp_vars.rds")
-#sols.top10vars <- readRDS("top10_imp_vars.rds")
+# sols.top10vars <- readRDS("top10_imp_vars.rds")
 
 # saveRDS(sols, "top5_imp_vars.rds")
-# sols.top5vars <- readRDS("top5_imp_vars.rds")
+#sols.top5vars <- readRDS("top5_imp_vars.rds")
 # 
 # saveRDS(sols, "top3_imp_vars.rds")
-# sols.top3vars <- readRDS("top3_imp_vars.rds")
+sols.top3vars <- readRDS("top3_imp_vars.rds")
 
 # top10.diff <- setdiff(sel.vars.accy, sel.vars.gini)  # n.top=10
 # saveRDS(top10.diff, "top10_imp_var_diff_accy_gini.rds")
@@ -84,7 +84,7 @@ for (train.pct in train.pct.seq){
 
 # overlap <- intersect(sel.vars.accy,sel.vars.gini)
 # saveRDS(overlap, "top10_overlap.rds")
-# top10.overlap <- readRDS("top10_overlap.rds")  # 5 overlaped
+#top10.overlap <- readRDS("top10_overlap.rds")  # 5 overlaped
 # accy.add <- setdiff(sel.vars.accy, top10.overlap) # overlap Xs rank: 1,2,3,4,8
 # gini.add <- setdiff(sel.vars.gini, top10.overlap) # overlap Xs rank: 1,2,6,7,10
 
@@ -92,17 +92,17 @@ for (train.pct in train.pct.seq){
 top10.overlap <- readRDS("top10_overlap.rds")  # 5 overlaped vars
 formula.class.top10overlap <- formula(paste("Target.Q4~", paste(top10.overlap,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
 
-nrep=50;
-train.pct.seq <- seq(0.2,0.8,0.1);
+nrep=1;
+train.pct.seq <- seq(0.1,0.9,0.1);
 
 sols <- NULL
 set.seed(777)
 for (train.pct in train.pct.seq){
   
-  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=500, nrep=nrep)
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=1500, nrep=nrep)
   sol <- data.frame(rf[[1]], method="all")  # Pred accuracy on test data
       
-  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class.top10overlap, m=5, no.tree=500, nrep=nrep)
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class.top10overlap, m=5, no.tree=1500, nrep=nrep)
   sol.overlap <- data.frame(rf[[1]], method="top10overlap")  # Pred accuracy on test data
     
   sols <- rbind(sols, sol, sol.overlap)
@@ -113,11 +113,11 @@ sols.top10overlap <- readRDS("top10_overlap_vars.rds")
 
 
 #-------------------------------------------------------------------------------------------------------------------------
-## RF model: effect of number of trees (select no.tree=500)
+## RF model: effect of number of trees (select no.tree=1500)
 num.tree <- 3000
 
 set.seed(123)
-rf <- runRF(dat=all, train.pct=0.75, model=formula.class2, m=5, no.tree=num.tree, nrep=1)
+rf <- runRF(dat=all, train.pct=0.90, model=formula.class2, m=5, no.tree=num.tree, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
 
@@ -126,16 +126,18 @@ plotRFOOBErr(rf.mod)
 
 #----------------------------------------------------------------------------------------------------------------------------
 # RF model: effect of mtry (select m=5)
-m.seq <- c(3, 5, 6, 10)  # mtry=sqrt(31)=5
+m.seq <- c(3, 5, 10)  # mtry=sqrt(31)=5
 
 set.seed(789)
 sol.all <- NULL
 for(m in m.seq){
-  rf <- runRF(dat=all, train.pct=0.75, model=formula.class2, m=m, no.tree=500, nrep=1)
+  rf <- runRF(dat=all, train.pct=0.9, model=formula.class2, m=m, no.tree=1500, nrep=1)
   sol.all <- rbind(sol.all, rf[[1]])
 }
 sol.all
-# write.csv(sol.all, "./mtry.csv", row.names=F)
+#saveRDS(sol.all, "mtry_train_90pct.rds")
+#sol.all <- readRDS("mtry_train_20pct.rds")
+
 
 
 #-------------------------------------------------------------------------------------------------------------------------------
@@ -145,11 +147,14 @@ train.pct.seq <- seq(0.1,0.9,0.1)
 set.seed(151)
 sol.all <- NULL
 for(train.pct in train.pct.seq){
-  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=500, nrep=5)
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=1500, nrep=10)
   sol.all <- rbind(sol.all, rf[[1]])
 }
 sol.all
 # write.csv(sol.all, "./train_perc_errrate_avg.csv", row.names=F)
+
+#saveRDS(sol.all, "train_pct_errrate_avg.rds")
+#sol.all <- readRDS("train_pct_errrate_avg.rds")
 
 plotRFAcc(sol.all)
 
@@ -158,7 +163,7 @@ plotRFAcc(sol.all)
 # RF model: variables importance 
 
 set.seed(777)
-rf <- runRF(dat=all, train.pct=0.75, model=formula.class2, m=5, no.tree=500, nrep=1)
+rf <- runRF(dat=all, train.pct=0.3, model=formula.class2, m=5, no.tree=1500, nrep=1)
 rf.mod <- rf[[2]]
 
 plotRFVarImp(rf.mod)
@@ -174,7 +179,7 @@ train <- filter(all, Date.Production.Start < q[2]) # early 25% wells
 test <- filter(all, Date.Production.Start > q[2]+365) # ~ 10% wells 
 
 set.seed(777)
-rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=500)
+rf <- runRF2(train=train, test=test, model=formula.class2, m=5, no.tree=1500)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # rf model obj
 plotRFOOBErr(rf.mod)
