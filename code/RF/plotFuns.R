@@ -53,6 +53,9 @@ plotRFVarImp <- function(rf.mod){
 }
 
 
+
+
+
 plotRFVarImp2 <- function(rf.mod){
 # Plot variable importance of a RF model 
 #
@@ -67,6 +70,41 @@ plotRFVarImp2 <- function(rf.mod){
   #plot(varImp, type="h")
 }
 
+
+
+plotRFVarImp3 <- function(dat){
+  # Plot variable importance of a RF model 
+  #
+  # Args:
+  #   dat: data.frame with predictors and importance scores
+  # Returns:
+  #   Normalized variable importance plot
+
+  fontsize <- 20
+  d <- dat[order(dat[,2],decreasing=T),]
+  d[,1] <- factor(as.character(d[,1]),levels=rev(as.character(d[,1])))
+  rownames(d) <- NULL
+    
+  d[,2] <- d[,2]/abs(max(d[,2])) * 100  # normalize relative to the variable with maximum score
+  abs.min <- abs(min(d[,2]))
+  
+  xlb <- names(d)[1]; ylb <- names(d)[2];
+  g1 <- ggplot(data=d,aes_string(x=xlb,y=ylb,group=xlb)) + 
+        geom_bar(stat="identity", colour="#d62d20", fill="#d62d20") + theme_grey(base_size=fontsize)
+        #geom_bar(stat="identity", colour="#639f89", fill="#639f89") + theme_grey(base_size=fontsize)
+    
+  #if(ylb=="mda")      g1 <- g1 + labs(y="Mean decrease in accuracy") 
+  #else if(ylb=="mdg") g1 <- g1 + labs(y="Mean decrease in Gini")
+  g1 <- g1 + labs(y="Variable Importance") # Simplify for presentation purpose
+    
+  g1 <- g1 + theme(axis.title=element_text(size=25,face="bold"), 
+                   axis.text.x=element_text(angle=0,hjust=1,vjust=0.4,colour='black'),
+                   axis.text.y= element_text(colour='black', size=25)) + 
+        geom_hline(yintercept=abs.min,linetype="dashed",colour="black") + coord_flip()
+  
+  print(g1)
+  
+}
 
 
 #------------------------------------------------------------------------------------------------------
@@ -98,7 +136,7 @@ plotRFOOBErr <- function(rf.mod){
               legend.text = element_text(size = 20),
               legend.justification=c(1,0), legend.position=c(1,0.86),
               legend.background = element_rect(fill="gray90", size=.5, linetype="dotted"))
-  g1 <- g1 + geom_vline(xintercept = 1500, linetype="longdash")
+  g1 <- g1 + geom_vline(xintercept = 1000, linetype="longdash")
   print(g1)
 }  
   
@@ -107,18 +145,17 @@ plotRFOOBErr <- function(rf.mod){
 #------------------------------------------------------------------------------------------------------
 # Plot classification accuracy at different training % (avg over nrep runs)
 #------------------------------------------------------------------------------------------------------
-plotRFAcc <- function(sol.all){
+plotRFAcc <- function(err){
   # Plot classification accuracy at different training % of a RF model 
   #
   # Args:
   #   sol: a matrix of summarized results of rf model at different training %
   #        each row represent an avg results over nrep for a fix training %
-  #        vars for each row: m, n.Tree, Train.Perc, Accy, TP, TN
+  #        vars for each row: Train.Perc, Accy, TP, TN
   # Returns:
-  #   OOB error rate at different number of trees
+  #   Classification Accuracy plot
   
-  # Plot accuracy at different training % (Avg 50 runs results)
-  err <- as.data.frame(sol.all[,seq(3,6)])
+  # Plot accuracy at different training %
   names(err)[2] <- "Classification Accuracy"
   names(err)[3] <- "True Positive Rate"
   names(err)[4] <- "True Negative Rate"
@@ -127,7 +164,7 @@ plotRFAcc <- function(sol.all){
   
   g1 <- ggplot(data=dat, aes(x=Train.Perc, y=value, colour=variable)) + 
         geom_line(size=1.1) + geom_point(size=4) + 
-        ylim(0.5,1) + xlim(0.1,0.9) + scale_x_continuous(breaks=seq(0.1,0.9,0.1)) +
+        ylim(0.4,1) + xlim(0.1,0.9) + scale_x_continuous(breaks=seq(0.1,0.9,0.1)) +
         xlab("Percentage of Training Data") + ylab("Test Classification Accuracy") + 
         theme(axis.title.x = element_text(size=24),
               axis.title.y = element_text(size=24),
@@ -170,42 +207,79 @@ plotRFAcc <- function(sol.all){
 #------------------------------------------------------------------------------------------------------
 # Plot sweet-spots
 #------------------------------------------------------------------------------------------------------
-plotSweetspot <- function(rf.mod, target){
+# plotSweetspot <- function(rf.mod, target){
+#   # Plot Sweetspot
+#   #
+#   # Args:
+#   #   rf.mod: a rf object that trained through data all
+#   #   target: data set with 1) true top quartile indicator/target 2) Longitude and Latitude
+#   #
+#   # Returns:
+#   #   Sweetspot plot with true+, false-, false+ 
+#   
+#   # Predicted results
+#   a <- rf.mod$predicted
+#   b <- as.numeric(names(a))
+#   c <- data.frame(b, a)
+#   d <- arrange(c, b)  # order predicted value from RF model
+#   dat <- cbind(target, pred=d[,2])  # Uwi Target.Q4 Latitude Longitude pred
+#   
+#   overlap <- dat %>% filter(Target.Q4==pred & pred==TRUE) %>% select(Uwi)  # true+
+#   top.q <- dat %>% 
+#             filter(Target.Q4==TRUE | pred==TRUE) %>% 
+#             mutate(type=ifelse(Target.Q4==pred, "Overlap", ifelse(pred==TRUE,"Pred","True")))
+#   
+#   g <- ggplot(top.q, aes(x=Longitude, y=Latitude, colour=type)) + geom_point(size=4) +  
+#         scale_colour_manual(values=c("#f05032", "#00539e", "#fec325")) +
+#         theme(
+#               #legend.title=element_blank(),
+#               #legend.text = element_text(size = 20),
+#               #legend.position=c(.1, .9),
+#               #legend.position="none",
+#               #panel.background = element_blank(),
+#               axis.title.x = element_text(size=28),
+#               axis.title.y = element_text(size=28)
+#         )
+#   
+#   print(g) 
+# }
+
+
+#------------------------------------------------------------------------------------------------------
+# Plot sweet-spots
+#------------------------------------------------------------------------------------------------------
+plotSweetspot <- function(dat){
   # Plot Sweetspot
   #
   # Args:
-  #   rf.mod: a rf object that trained through data all
-  #   target: data set with 1) true top quartile indicator/target 2) Longitude and Latitude
+  #   dat: dataframe with cols: Uwi Target.Q4 Latitude Longitude pred
   #
   # Returns:
   #   Sweetspot plot with true+, false-, false+ 
   
-  # Predicted results
-  a <- rf.mod$predicted
-  b <- as.numeric(names(a))
-  c <- data.frame(b, a)
-  d <- arrange(c, b)  # order predicted value from RF model
-  dat <- cbind(target, pred=d[,2])
-  
-  overlap <- dat %>% filter(Target.Q4==pred & pred==TRUE) %>% select(Uwi)  # true+
+  overlap <- dat %>% filter(Target.Q4==Target.Q4.Pred & Target.Q4.Pred==TRUE) %>% select(Uwi)  # true+
   top.q <- dat %>% 
-            filter(Target.Q4==TRUE | pred==TRUE) %>% 
-            mutate(type=ifelse(Target.Q4==pred, "Overlap", ifelse(pred==TRUE,"Pred","True")))
+    filter(Target.Q4==TRUE | Target.Q4.Pred==TRUE) %>% 
+    mutate(type=ifelse(Target.Q4==Target.Q4.Pred, "True Positive", ifelse(Target.Q4.Pred==TRUE,"False Positive","False Negative")))  # Pred:false+  True:fasle-
   
   g <- ggplot(top.q, aes(x=Longitude, y=Latitude, colour=type)) + geom_point(size=4) +  
-        scale_colour_manual(values=c("#f05032", "#00539e", "#fec325")) +
-        theme(
-              #legend.title=element_blank(),
-              #legend.text = element_text(size = 20),
-              #legend.position=c(.1, .9),
-              #legend.position="none",
-              #panel.background = element_blank(),
-              axis.title.x = element_text(size=28),
-              axis.title.y = element_text(size=28)
-        )
+    #scale_colour_manual(values=c("#f05032", "#00539e", "#")) +
+    scale_colour_manual(values=c("#fec325", "#00539e", "#f05032")) +
+    theme(
+      legend.title=element_blank(),
+      legend.text = element_text(size = 32),
+      legend.key.height=unit(3,"line"),
+      legend.position=c(.12, .6),
+      #legend.position="none",
+      #panel.background = element_blank(),
+      axis.title.x = element_text(size=28),
+      axis.title.y = element_text(size=28)
+    )
   
   print(g) 
 }
+
+
 
 
 
@@ -234,6 +308,29 @@ plotLine <- function(dat, xlab, ylab){
               legend.justification=c(1,0), legend.position=c(1,0),
               legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
               )
+  
+  print(g)
+}
+
+
+
+#------------------------------------------------------------------------------------------------------
+# Plot correlation heat map
+#------------------------------------------------------------------------------------------------------
+plotCorr <- function(x){
+  # Plot x-y line 
+  #
+  # Args:
+  #   x: variables data frame: x1 x2 x3...
+  #
+  # Returns:
+  #   x-x pearson correlation heat map
+  
+  g <- qplot(x=Var1, y=Var2, data=melt(cor(x, use="p")), fill=value, geom="tile") + 
+        scale_fill_gradient2(limits=c(-1,1)) +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+        theme(axis.text.x=element_text(colour="black")) +
+        theme(axis.text.y=element_text(colour="black"))
   
   print(g)
 }

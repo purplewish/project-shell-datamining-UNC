@@ -9,18 +9,136 @@ source("plotFuns.R")
 # Results directory
 setwd(file.path(repo_path, "Code/RF/results"))
 
+
 #-------------------------------------------------------------------------------------------------------------------------
 ## RF model on one set of pars 
 set.seed(777)
-rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=5, no.tree=1500, nrep=1)
+rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=5, no.tree=1000, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
 # saveRDS(rf.mod, "rfMod_sweetspot.rds")
-rf.mod <- readRDS("rfMod_sweetspot.rds")
+# rf.mod <- readRDS("rfMod_sweetspot.rds")
 
 ## Plot sweet-spots
 target <- select(all, Uwi, Target.Q4, Latitude, Longitude)
-plotSweetspot(rf.mod, target)
+a <- rf.mod$predicted
+b <- as.numeric(names(a))
+c <- data.frame(b, a)
+d <- arrange(c, b)  # order predicted value from RF model
+dat <- cbind(target, Target.Q4.Pred=d[,2])  # Uwi Target.Q4 Latitude Longitude pred
+
+plotSweetspot(dat)
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+## RF model 5-fold CV 
+set.seed(777)
+rf <- runRFCV(dat=all, model=formula.class2, m=5, no.tree=1000, k=5)
+sol <- rf[[1]]  # CV pred accuracy 
+pred <- rf[[2]]  # CV pred results
+
+# saveRDS(sol, "sweetspot_5CV_accy.rds")
+# sol <- readRDS("sweetspot_5CV_accy.rds")
+# saveRDS(pred, "sweetspot_5CV_pred.rds")
+# pred <- readRDS("sweetspot_5CV_pred.rds")
+plotSweetspot(pred)
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+## RF model on vars importance (avg importance score with rep runs)
+rep <- 50
+train.pct <- 1
+mda <- NULL; mdg <-NULL;
+
+set.seed(777)
+for (i in 1:rep){
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=1000)
+  rf.mod <- rf[[2]]   # Last rf model obj
+  
+  Predictor <- rownames(importance(rf.mod))
+  #Predictor <- gsub("(Core.|.Kriged|.Joined)",'',rownames(importance(rf.mod)))
+  dat <- data.frame(importance(rf.mod))
+  mda <- cbind(mda, dat[,3]) # mean decrease in accuracy
+  mdg <- cbind(mdg, dat[,4]) # mean decrease in gini
+  
+  print(paste0("rep=",i), quote=F)
+}
+
+dat <- data.frame(Predictor, mda=rowMeans(mda), mdg=rowMeans(mdg))  # average nrep runs importance scores
+imp.accy <- dat %>% select(Predictor, mda) %>% arrange(desc(mda))   # mean decrease in accuracy
+imp.gini <- dat %>% select(Predictor, mdg) %>% arrange(desc(mdg))   # mean decrease in gini
+# saveRDS(imp.accy, "imp_vars_accy_50rep.rds")
+# saveRDS(imp.gini, "imp_vars_gini_50rep.rds")
+# imp.accy <- readRDS("imp_vars_accy_50rep.rds")
+# imp.gini <- readRDS("imp_vars_gini_50rep.rds")
+
+imp.accy$Predictor <- gsub("(Core.|.Kriged|.Joined)",'',imp.accy$Predictor)
+imp.gini$Predictor <- gsub("(Core.|.Kriged|.Joined)",'',imp.gini$Predictor)
+plotRFVarImp3(imp.accy)
+plotRFVarImp3(imp.gini)
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+## RF model 5-fold CV using default mtry setting with top n importance vars
+
+imp.accy <- readRDS("imp_vars_accy_50rep.rds")
+imp.gini <- readRDS("imp_vars_gini_50rep.rds")
+sols <- NULL
+
+set.seed(777)
+for (top.n in nrow(imp.accy):1){
+  sel.vars.accy <- imp.accy$Predictor[1:top.n]  
+  sel.vars.gini <- imp.gini$Predictor[1:top.n]  
+  
+  formula.class.imp.accy <- formula(paste("Target.Q4~", paste(sel.vars.accy,collapse="+")))
+  formula.class.imp.gini <- formula(paste("Target.Q4~", paste(sel.vars.gini,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+  
+  rf.accy <- runRFCV2(dat=all, model=formula.class.imp.accy, no.tree=1000, k=5)  # default mtry setting
+  rf.gini <- runRFCV2(dat=all, model=formula.class.imp.gini, no.tree=1000, k=5)
+  
+  sol.accy <- data.frame(method="accy", topn=top.n, rf.accy[[1]])
+  sol.gini <- data.frame(method="gini", topn=top.n, rf.gini[[1]])
+  sols <- rbind(sols, sol.accy, sol.gini)
+  
+  print(paste0("top.n=",top.n), quote=F)
+}
+
+# saveRDS(sols, "topn_impvars_5CV_default_mtry.rds")
+sols <- readRDS("topn_impvars_5CV_default_mtry.rds")
+
+gini <- filter(sols, method=="gini")
+accy <- filter(sols, method=="accy")
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+## RF model on selected important vars with 5 fold CV
+# top n vars overlapped between gini and accy measure
+imp.accy <- readRDS("imp_vars_accy_50rep.rds")
+imp.gini <- readRDS("imp_vars_gini_50rep.rds")
+
+top.n <-10
+sel.accy <- imp.accy$Predictor[1:top.n]
+sel.gini <- imp.gini$Predictor[1:top.n]
+overlap <- intersect(sel.accy,sel.gini)
+#saveRDS(overlap, "top10_impvar_overlap.rds")
+#saveRDS(overlap, "top6_impvar_overlap.rds")
+top10.overlap <- readRDS("top10_impvar_overlap.rds")
+top6.overlap <- readRDS("top6_impvar_overlap.rds")
+
+formula.class.top10overlap <- formula(paste("Target.Q4~", paste(top10.overlap,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+set.seed(777)
+rf.top10.ov <- runRFCV2(dat=all, model=formula.class.top10overlap, no.tree=1000, k=5)  # default mtry setting
+sol.10ov <-rf.top10.ov[[1]]
+# saveRDS(sol.10ov, "top10_impvar_overlap_pred.rds")
+sol.10ov <- readRDS("top10_impvar_overlap_pred.rds")
+
+formula.class.top6overlap <- formula(paste("Target.Q4~", paste(top6.overlap,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+set.seed(777)
+rf.top6.ov <- runRFCV2(dat=all, model=formula.class.top6overlap, no.tree=1000, k=5)  # default mtry setting
+sol.6ov <-rf.top6.ov[[1]]
+# saveRDS(sol.6ov, "top6_impvar_overlap_pred.rds")
+sol.6ov <- readRDS("top6_impvar_overlap_pred.rds")
+
 
 
 #-------------------------------------------------------------------------------------------------------------------------
@@ -113,15 +231,17 @@ sols.top10overlap <- readRDS("top10_overlap_vars.rds")
 
 
 #-------------------------------------------------------------------------------------------------------------------------
-## RF model: effect of number of trees (select no.tree=1500)
+## RF model: effect of number of trees (select no.tree=1000)
 num.tree <- 3000
 
 set.seed(123)
-rf <- runRF(dat=all, train.pct=0.90, model=formula.class2, m=5, no.tree=num.tree, nrep=1)
+rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=3, no.tree=num.tree, nrep=1)
 sol <- rf[[1]]  # Pred accuracy on test data
 rf.mod <- rf[[2]]  # Last rf model obj
 
-plotRFOOBErr(rf.mod)
+# saveRDS(rf.mod, "rf_ntrees_m3.rds")  # m3 m5 m10
+# rf.mod <- readRDS("rf_ntrees_m3.rds")
+plotRFOOBErr(rf.mod)  # use oob error, no need to do cross validation
 
 
 #----------------------------------------------------------------------------------------------------------------------------
@@ -131,13 +251,13 @@ m.seq <- c(3, 5, 10)  # mtry=sqrt(31)=5
 set.seed(789)
 sol.all <- NULL
 for(m in m.seq){
-  rf <- runRF(dat=all, train.pct=0.9, model=formula.class2, m=m, no.tree=1500, nrep=1)
-  sol.all <- rbind(sol.all, rf[[1]])
+  rf <- runRF(dat=all, train.pct=1, model=formula.class2, m=m, no.tree=1000, nrep=1)
+  rf.mod <- rf[[2]]
+  sol.all <- rbind(sol.all, c(m=m, rf.mod$err.rate[1000,]))
 }
 sol.all
-#saveRDS(sol.all, "mtry_train_90pct.rds")
-#sol.all <- readRDS("mtry_train_20pct.rds")
-
+#saveRDS(sol.all, "mtry_train_100pct.rds")
+#sol.all <- readRDS("mtry_train_100pct.rds")
 
 
 #-------------------------------------------------------------------------------------------------------------------------------
@@ -147,23 +267,40 @@ train.pct.seq <- seq(0.1,0.9,0.1)
 set.seed(151)
 sol.all <- NULL
 for(train.pct in train.pct.seq){
-  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=1500, nrep=10)
+  rf <- runRF(dat=all, train.pct=train.pct, model=formula.class2, m=5, no.tree=1000, nrep=10)
   sol.all <- rbind(sol.all, rf[[1]])
 }
 sol.all
 # write.csv(sol.all, "./train_perc_errrate_avg.csv", row.names=F)
+# saveRDS(sol.all, "train_pct_errrate_avg.rds")
+# sol.all <- readRDS("train_pct_errrate_avg.rds")
+sol <- sol.all[,2:5]
+plotRFAcc(sol)
 
-#saveRDS(sol.all, "train_pct_errrate_avg.rds")
-#sol.all <- readRDS("train_pct_errrate_avg.rds")
 
-plotRFAcc(sol.all)
+#-------------------------------------------------------------------------------------------------------------------------------
+# RF model: effect of different train % using Cross Validation
+K <- c(10, 5, 3, 2, 3, 5, 10)  # K-fold CV
+Rev <- c(T, T, T, T, F, F, F)  # Reverse CV or not
+Train.Perc <- c(0.1, 0.2, 0.333, 0.5, 0.66, 0.8, 0.9)  # Training pct <-> K-fold CV
+
+set.seed(999)
+sol.all <- NULL
+for(i in 1:length(K)){
+  sol <- runRFCV(dat=all, model=formula.class2, m=5, no.tree=1000, K[i], Rev[i])
+  sol.all <- rbind(sol.all, sol)
+}
+sol.all
+#saveRDS(sol.all, "train_pct_errrate_cv.rds")
+#sol.all <- readRDS("train_pct_errrate_cv.rds")
+sol <- cbind(Train.Perc=Train.Perc, sol.all[,3:5])
+plotRFAcc(sol)
 
 
 #-------------------------------------------------------------------------------------------------------------------------------------
 # RF model: variables importance 
-
 set.seed(777)
-rf <- runRF(dat=all, train.pct=0.3, model=formula.class2, m=5, no.tree=1500, nrep=1)
+rf <- runRF(dat=all, train.pct=0.3, model=formula.class2, m=5, no.tree=1000, nrep=1)
 rf.mod <- rf[[2]]
 
 plotRFVarImp(rf.mod)
@@ -301,11 +438,14 @@ plotLine(accy, "Percentage of Training Data", "Test Classification Accuracy")
 library(ellipse)
 
 X <- select(all, -Uwi, -Target, -Target.Q, -Target.Q4, -Latitude, -Longitude, -Date.Production.Start)
-corr <- as.matrix(cor(X))
-h.corr <- which(corr>0.8&corr<1, arr.in=TRUE)
+names(X) <- gsub("(Core.|.Kriged|.Joined)",'',names(X))  # strip unneccsary characters
+plotCorr(X)
 
-X.none.overlap <- select(all, match(accy.add, names(all)), match(gini.add, names(all)))
-corr.none.overlap <- as.matrix(cor(X.none.overlap))
-colnames(corr.none.overlap)=NULL
-rownames(corr.none.overlap)=NULL
-plotcorr(corr.none.overlap, numbers=T)
+# corr <- as.matrix(cor(X))
+# h.corr <- which(corr>0.8&corr<1, arr.in=TRUE)
+# 
+# X.none.overlap <- select(all, match(accy.add, names(all)), match(gini.add, names(all)))
+# corr.none.overlap <- as.matrix(cor(X.none.overlap))
+# colnames(corr.none.overlap)=NULL
+# rownames(corr.none.overlap)=NULL
+# plotcorr(corr.none.overlap, numbers=T)

@@ -45,6 +45,7 @@ runRF <- function(dat, train.pct, model, m, no.tree, nrep=1, ntrace=500){
 	return(list(sol, rf.model)) 
 }
 
+
 #######################################################################################################################################
 runRF2 <- function(train, test, model, m, no.tree, ntrace=500){
 # Run RF model based on training and testing datesets
@@ -74,3 +75,105 @@ sol <- c(m=m, n.Tree=no.tree, Accy=pred.Accy, TP=pred.TP, TN=pred.TN)
 return(list(sol, rf.model)) 
 }
 
+
+####################################################################################################
+runRFCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500){
+  # Run RF model with Cross Validation
+  #
+  # Args:
+  #   dat: data set for rf, will be split to train and test set
+  #   model: formula for RF model
+  #   m: Number of variables randomly sampled as candidates at each split; mtry
+  #   no.tree: Number of trees
+  #   k:   K-fold CV 
+  #   rev: reverse CV or not
+  #   ntrace: running output is printed for every ntrace trees.
+  #
+  # Returns:
+  #   1. Prediction accuracy based on CV  2. Prediction results for each fold
+  
+  folds <- cvFolds(nrow(dat), K=k)
+  accy <-0; tp <-0; tn <-0;
+  pred <- NULL; sol <- NULL;
+  
+  for(i in 1:k){  
+    # Split data into train/test set
+    if(rev==TRUE){
+      train <- dat[folds$subsets[folds$which==i],]
+      test  <- dplyr::setdiff(dat, train)
+    } else {
+      test  <- dat[folds$subsets[folds$which==i],]
+      train <- dplyr::setdiff(dat, test)
+    }
+    
+    #################################################################################################
+    rf.model <- randomForest(model, data=train, importance=T, mtry=m, do.trace=ntrace, ntree=no.tree)  
+    #################################################################################################
+    
+    # Predict test dataset and calculate error rate
+    test.pred <- cbind(test[,c(1,35:37)],Target.Q4.Pred=predict(rf.model,newdata=test))  # Uwi, Target.Q4, Latitude, Longitude, Target.Q4.Pred
+    accy <- accy + sum(test.pred[,2]==test.pred[,5])/nrow(test.pred)  # Accuracy
+    tp   <- tp   + sum(test.pred[,2]==test.pred[,5] & test.pred[,2]=="TRUE")/sum(test.pred[,2]=="TRUE")  # TP
+    tn   <- tn   + sum(test.pred[,2]==test.pred[,5] & test.pred[,2]=="FALSE")/sum(test.pred[,2]=="FALSE")  # TN  
+  
+    pred <- rbind(pred, test.pred)  # save prediction results for fold i
+    
+    print(paste0("K=", k, " i=", i, " Rev=", rev), quote=F)
+  }
+  # CV results
+  sol <- data.frame(K=k, Rev=rev, Accy=accy/k, TP=tp/k, TN=tn/k, m=m, n.Tree=no.tree) 
+  
+  return(list(sol, pred))
+  
+}
+
+
+####################################################################################################
+runRFCV2 <- function(dat, model, no.tree, k, rev=FALSE, ntrace=500){
+  # Run RF model with Cross Validation using default setting mtry
+  #
+  # Args:
+  #   dat: data set for rf, will be split to train and test set
+  #   model: formula for RF model
+  #   no.tree: Number of trees
+  #   k:   K-fold CV 
+  #   rev: reverse CV or not
+  #   ntrace: running output is printed for every ntrace trees.
+  #
+  # Returns:
+  #   1. Prediction accuracy based on CV  2. Prediction results for each fold
+  
+  folds <- cvFolds(nrow(dat), K=k)
+  accy <-0; tp <-0; tn <-0;
+  pred <- NULL; sol <- NULL;
+  
+  for(i in 1:k){  
+    # Split data into train/test set
+    if(rev==TRUE){
+      train <- dat[folds$subsets[folds$which==i],]
+      test  <- dplyr::setdiff(dat, train)
+    } else {
+      test  <- dat[folds$subsets[folds$which==i],]
+      train <- dplyr::setdiff(dat, test)
+    }
+    
+    #################################################################################################
+    rf.model <- randomForest(model, data=train, importance=T, do.trace=ntrace, ntree=no.tree)  
+    #################################################################################################
+    
+    # Predict test dataset and calculate error rate
+    test.pred <- cbind(test[,c(1,35:37)],Target.Q4.Pred=predict(rf.model,newdata=test))  # Uwi, Target.Q4, Latitude, Longitude, Target.Q4.Pred
+    accy <- accy + sum(test.pred[,2]==test.pred[,5])/nrow(test.pred)  # Accuracy
+    tp   <- tp   + sum(test.pred[,2]==test.pred[,5] & test.pred[,2]=="TRUE")/sum(test.pred[,2]=="TRUE")  # TP
+    tn   <- tn   + sum(test.pred[,2]==test.pred[,5] & test.pred[,2]=="FALSE")/sum(test.pred[,2]=="FALSE")  # TN  
+    
+    pred <- rbind(pred, test.pred)  # save prediction results for fold i
+    
+    print(paste0("K=", k, " i=", i, " Rev=", rev), quote=F)
+  }
+  # CV results
+  sol <- data.frame(K=k, Rev=rev, Accy=accy/k, TP=tp/k, TN=tn/k, n.Tree=no.tree) 
+  
+  return(list(sol, pred))
+  
+}
