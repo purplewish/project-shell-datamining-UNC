@@ -106,8 +106,13 @@ for (top.n in nrow(imp.accy):1){
 # saveRDS(sols, "topn_impvars_5CV_default_mtry.rds")
 sols <- readRDS("topn_impvars_5CV_default_mtry.rds")
 
-gini <- filter(sols, method=="gini")
-accy <- filter(sols, method=="accy")
+
+accy <- sols %>% filter(method=="accy") %>% select(topn, Accy, TP, TN) %>% arrange(topn)
+gini <- sols %>% filter(method=="gini") %>% select(topn, Accy, TP, TN) %>% arrange(topn)
+
+plotRFAcc(accy,"Top K Important Variables", "Test Classification Accuracy", xtick=seq(1,31,1))
+plotRFAcc(gini,"Top K Important Variables", "Test Classification Accuracy", xtick=seq(1,31,1))
+
 
 
 #-------------------------------------------------------------------------------------------------------------------------
@@ -116,6 +121,8 @@ accy <- filter(sols, method=="accy")
 imp.accy <- readRDS("imp_vars_accy_50rep.rds")
 imp.gini <- readRDS("imp_vars_gini_50rep.rds")
 
+#-----------------------------
+# top 10 and 6 overlapped vars
 top.n <-10
 sel.accy <- imp.accy$Predictor[1:top.n]
 sel.gini <- imp.gini$Predictor[1:top.n]
@@ -139,6 +146,17 @@ sol.6ov <-rf.top6.ov[[1]]
 # saveRDS(sol.6ov, "top6_impvar_overlap_pred.rds")
 sol.6ov <- readRDS("top6_impvar_overlap_pred.rds")
 
+
+#-----------------------------------------
+# rm high corr variables of top 10 overlap
+corr.10ov <- readRDS("top10_overlap_corr.rds")
+top10.overlap <- readRDS("top10_impvar_overlap.rds")
+top10.overlap.rmRo <- top10.overlap[-1]  # rm RoCalculated
+
+formula.class.top10overlap.rmRo <- formula(paste("Target.Q4~", paste(top10.overlap.rmRo,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+set.seed(777)
+rf.top10.ov.rmRo <- runRFCV2(dat=all, model=formula.class.top10overlap.rmRo, no.tree=1000, k=5)  # default mtry setting
+sol.10ov.rmRo <-rf.top10.ov.rmRo[[1]]
 
 
 #-------------------------------------------------------------------------------------------------------------------------
@@ -292,9 +310,9 @@ for(i in 1:length(K)){
 }
 sol.all
 #saveRDS(sol.all, "train_pct_errrate_cv.rds")
-#sol.all <- readRDS("train_pct_errrate_cv.rds")
+sol.all <- readRDS("train_pct_errrate_cv.rds")
 sol <- cbind(Train.Perc=Train.Perc, sol.all[,3:5])
-plotRFAcc(sol)
+plotRFAcc(sol, "Percentage of Training Data", "Test Classification Accuracy", xtick=seq(0.1,0.9,0.1))
 
 
 #-------------------------------------------------------------------------------------------------------------------------------------
@@ -441,7 +459,14 @@ X <- select(all, -Uwi, -Target, -Target.Q, -Target.Q4, -Latitude, -Longitude, -D
 names(X) <- gsub("(Core.|.Kriged|.Joined)",'',names(X))  # strip unneccsary characters
 plotCorr(X)
 
-# corr <- as.matrix(cor(X))
+# top 10 overlap importance vars between accuracy and gini measurement
+X.ov10 <- select(X, Core.RoCalculated.Kriged,Producer.DepthTrueVertical.Joined, Core.S2.Kriged, Core.Tmax.Kriged, Core.S3.Kriged)
+names(X.ov10) <- gsub("(Core.|.Kriged|.Joined)",'',names(X.ov10))  # strip unneccsary characters
+plotCorr(X.ov10)
+corr <- as.matrix(cor(X.ov10))
+# saveRDS(corr, "top10_overlap_corr.rds")
+# corr <- readRDS("top10_overlap_corr.rds")
+
 # h.corr <- which(corr>0.8&corr<1, arr.in=TRUE)
 # 
 # X.none.overlap <- select(all, match(accy.add, names(all)), match(gini.add, names(all)))

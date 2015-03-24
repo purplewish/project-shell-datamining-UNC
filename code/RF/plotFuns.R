@@ -145,13 +145,16 @@ plotRFOOBErr <- function(rf.mod){
 #------------------------------------------------------------------------------------------------------
 # Plot classification accuracy at different training % (avg over nrep runs)
 #------------------------------------------------------------------------------------------------------
-plotRFAcc <- function(err){
+plotRFAcc <- function(err, xlb, ylb, xtick){
   # Plot classification accuracy at different training % of a RF model 
   #
   # Args:
-  #   sol: a matrix of summarized results of rf model at different training %
-  #        each row represent an avg results over nrep for a fix training %
-  #        vars for each row: Train.Perc, Accy, TP, TN
+  #   err: a matrix of summarized accuracy results of rf model at different x
+  #        each row represent an avg results over nrep for a fix x
+  #        vars for each row: x, Accy, TP, TN
+  #   xlb: x axis label
+  #   ylb: y axis label
+  #   xtick: x ticks 
   # Returns:
   #   Classification Accuracy plot
   
@@ -159,18 +162,18 @@ plotRFAcc <- function(err){
   names(err)[2] <- "Classification Accuracy"
   names(err)[3] <- "True Positive Rate"
   names(err)[4] <- "True Negative Rate"
-  dat <- melt(err, id="Train.Perc")
+  dat <- melt(err, id=names(err)[1])
   dat.accy <- dat[1:9,]  # classificication acc
   
-  g1 <- ggplot(data=dat, aes(x=Train.Perc, y=value, colour=variable)) + 
+  g1 <- ggplot(data=dat, aes_string(x=names(err)[1], y="value", colour="variable")) + 
         geom_line(size=1.1) + geom_point(size=4) + 
-        ylim(0.4,1) + xlim(0.1,0.9) + scale_x_continuous(breaks=seq(0.1,0.9,0.1)) +
-        xlab("Percentage of Training Data") + ylab("Test Classification Accuracy") + 
+        ylim(0.4,1) + scale_x_continuous(breaks=xtick) +
+        xlab(xlb) + ylab(ylb) + 
         theme(axis.title.x = element_text(size=24),
               axis.title.y = element_text(size=24),
               axis.text.x = element_text(colour="grey20",size=15),
               axis.text.y = element_text(colour="grey20",size=15),
-              legend.title=element_blank(),
+              legend.title = element_blank(),
               legend.text = element_text(size = 20),
               legend.justification=c(1,0), legend.position=c(1,0),
               legend.background = element_rect(fill="gray90", size=.5, linetype="dotted"))
