@@ -17,6 +17,14 @@ ab <- ab %>% distinct(API) %>% select(-Entity) %>% rename(Uwi=API, Latitude=Surf
 ab$Date.Production.Start <- as.Date(ab$Date.Production.Start, format="%Y-%m-%d")
 prod.date.loc <- ab 
 
+## Load core wells location
+c <- read.csv("031_Core_GeoChem.csv", as.is=T)
+c <- c[-1,]
+core.loc <- distinct(select(c, Latitude=Well.Latitude, Longitude=Well.Longitude))
+mode(core.loc$Latitude )<- "numeric"
+mode(core.loc$Longitude )<- "numeric"
+
+
 #---------------------------------------------------------------------------------------------------------------------------------
 ## Load Xs and Y
 
@@ -46,6 +54,7 @@ all <- mutate(all, Target.Q4=factor(Target.Q=="Q4"))  # class: Q4 ~Q4 TRUE FALSE
 # Classification formula
 formula.class1 <- formula(paste("Target.Q~", paste(x.vars,collapse="+")))  # class:Q1 Q2 Q3 Q4
 formula.class2 <- formula(paste("Target.Q4~", paste(x.vars,collapse="+"))) # class:Q4 ~Q4, topQ vs. ~topQ
+formula.reg <- formula(paste("Target~", paste(x.vars,collapse="+")))
 
 #---------------------------------------------------------------------------------------------------------------------------------
 ## Add production date to data all

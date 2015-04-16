@@ -177,3 +177,205 @@ runRFCV2 <- function(dat, model, no.tree, k, rev=FALSE, ntrace=500){
   return(list(sol, pred))
   
 }
+
+
+
+###############################################################################
+runRFReg <- function(dat, train.pct, model, m, no.tree, ntrace=500){
+# Run RF model on regression with given pars 
+#
+# Args:
+#   dat: data set for rf, will be split to train and test set
+#   train.pct: training data percentage 
+#   model: formula for RF model
+#   m: Number of variables randomly sampled as candidates at each split; mtry
+#   no.tree: Number of trees
+#   ntrace: running output is printed for every ntrace trees.
+#
+# Returns:
+#	1. Prediction mse on test data; 2. Last RF model object
+	sol <- NULL
+	
+	print(paste0("Train%=", train.pct), quote=F)
+
+	# Split data into train/test set
+	train <- sample_frac(dat, train.pct, replace=F)
+	test  <- dplyr::setdiff(dat, train)
+
+	#################################################################################################
+	rf.model <- randomForest(model, data=train, importance=T, mtry=m, do.trace=ntrace, ntree=no.tree)  
+	#################################################################################################
+
+	# Predict test dataset and calculate mse
+	test.pred <- cbind(test[,c(1,33)],Pred=predict(rf.model,newdata=test))  # Uwi, Target, Pred
+	mse <- sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
+
+	# Avg accuracy over nrep on test dataset at fixed training %
+	sol <- rbind(sol, c(m=m, n.Tree=no.tree, Train.Perc=train.pct, mse=mse))
+	
+	return(list(sol, rf.model)) 
+}
+
+
+
+####################################################################################################
+runRFRegCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500, default=FALSE){
+  # Run RF regression model with Cross Validation
+  #
+  # Args:
+  #   dat: data set for rf, will be split to train and test set
+  #   model: formula for RF model
+  #   m: Number of variables randomly sampled as candidates at each split; mtry
+  #   no.tree: Number of trees
+  #   k:   K-fold CV 
+  #   rev: reverse CV or not
+  #   ntrace: running output is printed for every ntrace trees.
+  #   default: using default setting?
+  # Returns:
+  #   1. Prediction mse based on CV  2. Prediction results for each fold
+  
+  folds <- cvFolds(nrow(dat), K=k)
+  mse <- 0;
+  pred <- NULL; sol <- NULL;
+  
+  for(i in 1:k){  
+    # Split data into train/test set
+    if(rev==TRUE){
+      train <- dat[folds$subsets[folds$which==i],]
+      test  <- dplyr::setdiff(dat, train)
+    } else {
+      test  <- dat[folds$subsets[folds$which==i],]
+      train <- dplyr::setdiff(dat, test)
+    }
+    
+    #####################################################################################################
+    if(default==TRUE){
+    	rf.model <- randomForest(model, data=train, importance=T, do.trace=ntrace, ntree=no.tree)  
+    } else {
+       rf.model <- randomForest(model, data=train, importance=T, mtry=m, do.trace=ntrace, ntree=no.tree)  
+    }
+    #####################################################################################################
+    
+    # Predict test dataset and calculate mse
+    test.pred <- cbind(test[,c(1,33)], Pred=predict(rf.model,newdata=test), test[,c(36,37)])  # Uwi, Target, Pred, Latitude, Longitude
+    mse <- mse + sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
+    pred <- rbind(pred, test.pred)  # save prediction results for fold i
+    
+    print(paste0("K=", k, " i=", i, " Rev=", rev), quote=F)
+  }
+  # CV results
+  m <- rf.model$mtry  # get default value of mtry
+  sol <- data.frame(K=k, Rev=rev, mse=mse/k, m=m, n.Tree=no.tree)
+  
+  return(list(sol, pred))
+  
+}
+
+
+
+
+
+
+
+####################################################################################################
+runBartRegCV <- function(dat, no.tree, no.burn, no.after.burn, k.fold=5, k=2, q=0.9, nu=3, rev=FALSE, seed=999){
+  # Run RF regression model with Cross Validation
+  #
+  # Args:
+  #   dat: data set for bart, will be split to train and test set
+  #   model: formula for RF model
+  #   m: Number of variables randomly sampled as candidates at each split; mtry
+  #   no.tree: Number of trees
+  #   k:   K-fold CV 
+  #   rev: reverse CV or not
+  #   ntrace: running output is printed for every ntrace trees.
+  #   default: using default setting?
+  # Returns:
+  #   1. Prediction mse based on CV  2. Prediction results for each fold
+  
+  folds <- cvFolds(nrow(dat), K=k.fold)
+  mse <- 0;
+  pred <- NULL; sol <- NULL;
+  
+  for(i in 1:k.fold){  
+    # Split data into train/test set
+    if(rev==TRUE){
+      train <- dat[folds$subsets[folds$which==i],]
+      test  <- dplyr::setdiff(dat, train)
+    } else {
+      test  <- dat[folds$subsets[folds$which==i],]
+      train <- dplyr::setdiff(dat, test)
+    }
+    
+  ##########################################################################################################################################################################
+    bart <- bartMachine(train[,2:32], train[,33], num_trees=no.tree, num_burn_in=no.burn, num_iterations_after_burn_in=no.after.burn, k=k, q=q, nu=nu, seed=666)  # for regression, more trees seems more accurate
+  ##########################################################################################################################################################################
+    
+    # Predict test dataset and calculate mse
+    test.pred <- cbind(test[,c(1,33)], Pred=predict(bart,test[,2:32]), test[,c(36,37)])  # Uwi, Target, Pred, Latitude, Longitude
+  
+    mse <- mse + sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
+    pred <- rbind(pred, test.pred)  # save prediction results for fold i
+    
+    print(paste0("K=", k.fold, " i=", i, " Rev=", rev), quote=F)
+  }
+  # CV results
+  sol <- data.frame(K=k.fold, Rev=rev, mse=mse/k.fold, k=k, q=q, nu=nu, n.Tree=no.tree, seed=seed)
+  
+  return(list(sol, pred))
+  
+}
+
+
+#######################################################################################################
+# function that computes the fraction of correctly identified entries in the top n%-quantile for all n
+#
+#usage
+# qrecoverycurve(x)
+#
+#arguments
+#  x               a data frame with at least 2 columns that are all at least ordinal
+#                   column 1 contains true values, the other columns contains predictions that are rank proxies
+#
+#value
+#  a data frame; 
+#   the i-th entry in the j-th column is the fraction of rows that are 
+#    correctly (baseline = true rank) identified by the proxy in column j to rank amongst the first i rows   
+#     rows with NAs in the first two columns are omitted from this computation
+#   the 1st column contains as baseline the fraction which is achieved in expectation by optimal uninformed guessing
+#
+# author: Franz Kiraly <f.kiraly@ucl.ac.uk>
+
+# example
+#  x <- cbind(1:11,c(2:4,5,7,9:4))
+#  recfreq <- qrecoverycurve(x)
+#  plot(recfreq,type = "l",xlab = "baseline recovery", ylab = "method recovery")
+#  plot(1:10,recfreq[,2],type = "l",xlab = "size of top quantile", ylab = "recovery rate")
+
+
+qRecCurv <- function(x) {
+  
+  x <- as.data.frame(na.omit(x))
+  
+  n.row.x <- nrow(x)  
+  n.col.x <- ncol(x)  
+  
+  ranks <- x %>% mutate_each(funs(row_number)) %>% arrange(Target)  # ranks for each col and then ordered by 1st col(true value)
+  
+  rec.q <- data.frame(matrix(-1, nrow = n.row.x , ncol = n.col.x))  # recover quantiles
+  rec.q[1,] <- (ranks[1,] == 1)
+  for (i in 2:n.row.x)
+  {
+    rec.q[i,] <- ranks %>% slice(1:i) %>% summarise_each (funs(sum(.<=i)/i))
+  }
+  names(rec.q)[1]<- "True"
+  rec.q[,1]<-1:n.row.x/n.row.x
+  
+  #row.names(rec.q) <- sapply(100*(1:n.row.x)/n.row.x,  FUN = function(x) paste("P",round(x,digits = 0),sep = ""))
+  
+  return(rec.q)
+  
+}
+
+
+

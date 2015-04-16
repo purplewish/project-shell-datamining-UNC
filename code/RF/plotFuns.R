@@ -297,9 +297,9 @@ plotLine <- function(dat, xlab, ylab){
   #
   # Returns:
   #   x-y line plot
-  a <- names(dat)
+  a <- names(dat); 
   g <- ggplot(data=dat, aes_string(x=a[1],y=a[2])) + 
-        aes(colour="#d62d20") + geom_line(size=1.1) + geom_point(size=4) + ylim(0.5,1) +
+        geom_line(size=1, colour="#000000") + geom_point(size=4) + scale_x_continuous(breaks=seq(1,31,1)) + #ylim(0.5,1) +
         xlab(xlab) + ylab(ylab) + 
         theme(legend.position="none",
               axis.title.x = element_text(size=24),
@@ -347,4 +347,53 @@ plotCorr <- function(x){
 
 #png(file = file, width=11, height=8.5)
 #dev.off()
+
+
+#------------------------------------------------------------------------------------------------------
+# Plot Well Production
+#------------------------------------------------------------------------------------------------------
+plotWellProd <- function(dat){
+  # Plot Well production
+  #
+  # Args:
+  #   dat: dataframe with cols:  Longitude Latitude Production
+  #
+  # Returns:
+  #   Production well plot with production heatmap
+  g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=Production)) + geom_point(size=3) + 
+    scale_colour_gradient(low="#56B4E9",  high="red") + 
+    theme(
+      legend.text = element_text(size = 16),
+      legend.title = element_text(size = 20),
+      axis.title.x = element_text(size=28),
+      axis.title.y = element_text(size=28)
+    ) 
+  
+  print(g) 
+}
+
+
+#------------------------------------------------------------------------------------------------------
+# Plot Core + Production Well
+#------------------------------------------------------------------------------------------------------
+plotCoreProd <- function(dat){
+  # Plot Well production
+  #
+  # Args:
+  #   dat: dataframe with cols:  Longitude Latitude ID (core/prod)
+  #
+  # Returns:
+  #    Plot Core + Production Well
+  g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=ID, size=ID)) + geom_point() + 
+    scale_color_manual(name="Dataset", labels = c("Core wells","Production wells"), values=c("red", "grey30")) +
+    scale_size_manual(name="Dataset", labels= c("Core wells","Production wells"), values=c(5, 3)) + 
+    theme(
+      legend.text = element_text(size = 16),
+      legend.title = element_text(size = 20),
+      axis.title.x = element_text(size=28),
+      axis.title.y = element_text(size=28)
+    ) 
+  
+  print(g) 
+}
 
