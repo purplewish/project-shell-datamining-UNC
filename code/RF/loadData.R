@@ -41,7 +41,7 @@ x.vars <- x.vars[-1]  # rm Uwi (Uwi isn't a predictor)
 setwd(file.path(repo_path, "Kaggle/Final/RulesBasedApproach Oct 8/RulesBasedApproach Oct 8"))
 
 y <- read.csv("Rules features using recent and Jan 2014 data.csv")
-y <- select(y, Uwi, Target)  # 2631 x 2
+y <- select(y, Uwi, Target, Rules.Prediction, Kaggle.Prediction)  # 2631 x 2
 
 # Merge X and Y
 all <- left_join(x, y, by="Uwi")

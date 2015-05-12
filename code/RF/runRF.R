@@ -235,8 +235,7 @@ runRFRegCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500, default
   #   1. Prediction mse based on CV  2. Prediction results for each fold
   
   folds <- cvFolds(nrow(dat), K=k)
-  mse <- 0;
-  pred <- NULL; sol <- NULL;
+  mse <- NULL;  pred <- NULL; sol <- NULL;
   
   for(i in 1:k){  
     # Split data into train/test set
@@ -257,15 +256,25 @@ runRFRegCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500, default
     #####################################################################################################
     
     # Predict test dataset and calculate mse
-    test.pred <- cbind(test[,c(1,33)], Pred=predict(rf.model,newdata=test), test[,c(36,37)])  # Uwi, Target, Pred, Latitude, Longitude
-    mse <- mse + sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
+    test.pred <- cbind(test[,c(1,33)], Pred=predict(rf.model,newdata=test), test[,c(38,39)])  # Uwi, Target, Pred, Latitude, Longitude
+    #mse <- mse + sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
+    mse <- c(mse, sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred))
     pred <- rbind(pred, test.pred)  # save prediction results for fold i
     
     print(paste0("K=", k, " i=", i, " Rev=", rev), quote=F)
   }
   # CV results
   m <- rf.model$mtry  # get default value of mtry
-  sol <- data.frame(K=k, Rev=rev, mse=mse/k, m=m, n.Tree=no.tree)
+  rmse <- sqrt(mse)
+  #sol <- data.frame(K=k, Rev=rev, mse=mse/k, m=m, n.Tree=no.tree)
+  sol <- data.frame(K=k, Rev=rev, mse=mean(mse), mse.sd=sd(mse), rmse=mean(rmse), rmse.sd=sd(rmse), m=m, n.Tree=no.tree)
+  
+  if(rev==TRUE){
+    pred <- pred %>% group_by(Uwi) %>% summarise(Pred=mean(Pred))  # average reverse CV prediction
+    target <- select(dat, Uwi, Target, Latitude, Longitude)
+    pred <- left_join(target, pred, by="Uwi")
+    pred <- select(pred, Uwi, Target, Pred, Latitude, Longitude)
+  } 
   
   return(list(sol, pred))
   
@@ -344,8 +353,6 @@ runBartRegCV <- function(dat, no.tree, no.burn, no.after.burn, k.fold=5, k=2, q=
 #     rows with NAs in the first two columns are omitted from this computation
 #   the 1st column contains as baseline the fraction which is achieved in expectation by optimal uninformed guessing
 #
-# author: Franz Kiraly <f.kiraly@ucl.ac.uk>
-
 # example
 #  x <- cbind(1:11,c(2:4,5,7,9:4))
 #  recfreq <- qrecoverycurve(x)
