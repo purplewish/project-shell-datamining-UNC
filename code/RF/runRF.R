@@ -218,6 +218,48 @@ runRFReg <- function(dat, train.pct, model, m, no.tree, ntrace=500){
 
 
 
+
+###############################################################################
+runRFReg2 <- function(dat, cutoff, model, m, no.tree, ntrace=500){
+  # Run RF model on regression with given pars 
+  #
+  # Args:
+  #   dat: data set for rf, will be split to train and test set
+  #   cutoff: cutoff date, wells before cutoff date will be used for training
+  #   model: formula for RF model
+  #   m: Number of variables randomly sampled as candidates at each split; mtry
+  #   no.tree: Number of trees
+  #   ntrace: running output is printed for every ntrace trees.
+  #
+  # Returns:
+  #  1. Prediction mse on test data; 2.RF model object
+  sol <- NULL
+  pred <- NULL
+  
+  # Split data into train/test set based on cutoff date
+  train <- dat[dat$Date.Production.Start<=cutoff, ]
+  test  <- dplyr::setdiff(dat, train)
+  
+  print(paste0("Cutoff date=", cutoff, " Training%=", nrow(train)/nrow(dat)), quote=F)
+  #################################################################################################
+  rf.model <- randomForest(model, data=train, mtry=m, do.trace=ntrace, ntree=no.tree)  
+  #################################################################################################
+  
+  # Predict test dataset and calculate mse
+  test.pred <- cbind(test[,c(1,33)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
+  mse <- sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
+  
+  # Prediction results (combine observed with predict)
+  pred <- rbind(cbind(train[,c(1,33)], Pred=train[,33]), test.pred)
+  
+  # Accuracy on test dataset at given cutoff date
+  sol <- data.frame(cutoff=cutoff, train.pct=nrow(train)/nrow(dat), mse=mse, rmse=sqrt(mse), m=m, n.Tree=no.tree)
+  
+  return(list(sol, pred)) 
+}
+
+
+
 ####################################################################################################
 runRFRegCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500, default=FALSE){
   # Run RF regression model with Cross Validation
@@ -249,7 +291,7 @@ runRFRegCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500, default
     
     #####################################################################################################
     if(default==TRUE){
-    	rf.model <- randomForest(model, data=train, importance=T, do.trace=ntrace, ntree=no.tree)  
+    	rf.model <- randomForest(model, data=train, importance=T, do.trace=ntrace, ntree=no.tree) 
     } else {
        rf.model <- randomForest(model, data=train, importance=T, mtry=m, do.trace=ntrace, ntree=no.tree)  
     }
@@ -367,13 +409,14 @@ qRecCurv <- function(x) {
   n.row.x <- nrow(x)  
   n.col.x <- ncol(x)  
   
-  ranks <- x %>% mutate_each(funs(row_number)) %>% arrange(Target)  # ranks for each col and then ordered by 1st col(true value)
+  ranks <- x %>% mutate_each(funs(row_number)) %>% arrange(desc(Target))  # ranks for each col and then ordered by 1st col(true value)
   
   rec.q <- data.frame(matrix(-1, nrow = n.row.x , ncol = n.col.x))  # recover quantiles
-  rec.q[1,] <- (ranks[1,] == 1)
+  rec.q[1,] <- (ranks[1,] == n.row.x)
   for (i in 2:n.row.x)
   {
-    rec.q[i,] <- ranks %>% slice(1:i) %>% summarise_each (funs(sum(.<=i)/i))
+    #rec.q[i,] <- ranks %>% slice(1:i) %>% summarise_each (funs(sum(.<=i)/i))
+    rec.q[i,] <- ranks %>% slice(1:i) %>% summarise_each (funs(sum(.>=(n.row.x-i+1))/i))
   }
   names(rec.q)[1]<- "True"
   rec.q[,1]<-1:n.row.x/n.row.x

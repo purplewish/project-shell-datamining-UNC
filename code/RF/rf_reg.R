@@ -109,12 +109,13 @@ rf <- runRFRegCV(dat=all, model=formula.reg, m=12, no.tree=1000, k=5)
 sol <- rf[[1]]  # CV pred accuracy 
 pred <- rf[[2]]  # CV pred results
 # saveRDS(sol, "sweetspot_5CV_reg_mse.rds")
-# sol <- readRDS("sweetspot_5CV_reg_mse.rds")
+sol <- readRDS("sweetspot_5CV_reg_mse.rds")
 # saveRDS(pred, "sweetspot_5CV_reg_pred.rds")
+pred <- readRDS("sweetspot_5CV_reg_pred.rds")
 
 
 #@@ Plot Sweetspot
-n.q4 <- ceiling(nrow(pred)*0.25)
+n.q4 <- ceiling(nrow(pred)*0.25)  # 658
 q4.true <- pred %>% top_n(n.q4, Target)
 q4.pred <- pred %>% top_n(n.q4, Pred)
 
@@ -310,6 +311,11 @@ x <- left_join(x, pred.kaggle, by="Uwi")
 x <- x[,-1]  # rm Uwi
 
 q.rec <- qRecCurv(x) * 100
+
+# Round to integer percentage
+index <- ceiling(nrow(q.rec)*seq(0.3,100,0.3)/100)
+q.rec <- q.rec[index, ]
+
 q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
 q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="4 Random Forest")
 q.rec3 <- q.rec %>% select(True, X3) %>% rename(RecRate=X3) %>% mutate(Method="5 Random Forest (6 Vars)")
@@ -360,6 +366,10 @@ x <- pred.10pct %>%
       select(-Uwi)
 
 q.rec <- qRecCurv(x) * 100
+# Round to integer percentage
+index <- c(ceiling(nrow(q.rec)*seq(0.2, 100, 0.2)/100))
+q.rec <- q.rec[index, ]
+
 q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
 q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 10% Training")
 q.rec3 <- q.rec %>% select(True, X3) %>% rename(RecRate=X3) %>% mutate(Method="3 20% Training")
@@ -397,4 +407,64 @@ ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) +
   )
 
 
+
+#@@ Comparison of different cutoff date for the full model (31 vars)
+pred <- readRDS("cutoff_reg_pred.rds")  # full model
+c <- levels(pred$cutoff)
+pred.cut1 <- pred %>% filter(cutoff==c[1]) %>% select(Uwi, Target, Pred)
+pred.cut2 <- pred %>% filter(cutoff==c[2]) %>% select(Uwi, Pred)
+pred.cut3 <- pred %>% filter(cutoff==c[3]) %>% select(Uwi, Pred)
+
+x <- pred.cut1 %>%
+  left_join(pred.cut2, by="Uwi") %>% rename(cut1=Pred.x) %>% rename(cut2=Pred.y) %>%
+  left_join(pred.cut3, by="Uwi") %>% rename(cut3=Pred) %>%
+  select(-Uwi)
+
+q.rec <- qRecCurv(x) * 100
+q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
+q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 cutoff by 2010-11-01")
+q.rec3 <- q.rec %>% select(True, X3) %>% rename(RecRate=X3) %>% mutate(Method="3 cutoff by 2011-01-01")
+q.rec4 <- q.rec %>% select(True, X4) %>% rename(RecRate=X4) %>% mutate(Method="4 cutoff by 2011-03-01")
+
+q.rec <- q.rec1 %>% union(q.rec2) %>% union(q.rec3) %>% union(q.rec4)
+
+ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
+  geom_line(lwd=1.2) +
+  scale_color_manual(values=c("#787777", "red", "#5E9F37", "#007cd2")) +
+  xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  #scale_y_continuous(limits=c(50, 90)) +
+  #scale_x_continuous(limits=c(0, 50)) +
+  theme(#legend.position="none",
+    axis.title.x = element_text(size=24),
+    axis.title.y = element_text(size=24),
+    axis.text.x = element_text(colour="grey20",size=15),
+    axis.text.y = element_text(colour="grey20",size=15),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 20),
+    legend.justification=c(1,0), legend.position=c(1,0),
+    legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
+  )
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+### Time dependent study
+#-------------------------------------------------------------------------------------------------------------------------
+#@@ Effect of different cut off date <=> different training %
+
+# Cut off date
+cutoff <- c("2010-11-01", "2011-01-01", "2011-03-01")
+# sum(all$Date.Production.Start<="2010-11-01")  # 297 11.3%   1118 42.5% > cutoff+12month
+# sum(all$Date.Production.Start<="2011-01-01")  # 418 15.9%   825  31.3%
+# sum(all$Date.Production.Start<="2011-03-01")  # 542 20.6%   502  19.1%
+
+set.seed(999); sol.all <- NULL; pred.all <- NULL;
+for(i in 1:length(cutoff)){  
+  sol <- runRFReg2(all, cutoff[i], model=formula.reg, m=12, no.tree=1000, ntrace=500)
+  sol.all <- rbind(sol.all, sol[[1]])
+  pred.all <- rbind(pred.all, data.frame(sol[[2]], cutoff=cutoff[i]))
+}
+saveRDS(sol.all, "cutoff_reg_mse.rds")
+saveRDS(pred.all, "cutoff_reg_pred.rds")
 
