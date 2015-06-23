@@ -12,6 +12,8 @@ source("header.R")
 source("loadData.R")
 source("runRF.R")
 source("plotFuns.R")
+source("loadChronIHSData.R")
+source("loadChronIHSData2.R")
 
 # Results directory
 setwd(file.path(repo_path, "Code/RF/results"))
@@ -310,11 +312,11 @@ x <- left_join(pred, pred.6v, by="Uwi")
 x <- left_join(x, pred.kaggle, by="Uwi")
 x <- x[,-1]  # rm Uwi
 
-q.rec <- qRecCurv(x) * 100
-
+q.rec0 <- qRecCurv(x) * 100
+#q.rec <- q.rec0[-c(1:7),]
 # Round to integer percentage
-index <- ceiling(nrow(q.rec)*seq(0.3,100,0.3)/100)
-q.rec <- q.rec[index, ]
+index <- ceiling(nrow(q.rec0)*seq(0.3,100,0.3)/100)
+q.rec <- q.rec0[index, ]
 
 q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
 q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="4 Random Forest")
@@ -365,10 +367,16 @@ x <- pred.10pct %>%
       left_join(pred.90pct, by="Uwi") %>% rename(pct90=Pred) %>%
       select(-Uwi)
 
-q.rec <- qRecCurv(x) * 100
+# Top quartile
+#q.rec0 <- qRecCurv(x) * 100
+#q.rec <- q.rec0[-c(1:10),]
 # Round to integer percentage
-index <- c(ceiling(nrow(q.rec)*seq(0.2, 100, 0.2)/100))
-q.rec <- q.rec[index, ]
+
+# Bottom quartile
+q.rec0 <- qRecCurvBottom(x) * 100
+
+index <- c(ceiling(nrow(q.rec0)*seq(0.2, 100, 0.2)/100))
+q.rec <- q.rec0[index, ]
 
 q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
 q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 10% Training")
@@ -392,7 +400,8 @@ q.rec <- q.rec1 %>% union(q.rec2) %>%
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#787777", "#FBDB0C", "#5E9F37", "#007cd2", "#333333", "#FF6600", "#FF1CAE", "#ff0000")) +
-  xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  #xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
   #scale_y_continuous(limits=c(50, 90)) +
   #scale_x_continuous(limits=c(0, 50)) +
   theme(#legend.position="none",
@@ -408,7 +417,7 @@ ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) +
 
 
 
-#@@ Comparison of different cutoff date for the full model (31 vars)
+#@@ Kaggle dataset Comparison of different cutoff date for the full model (31 vars)
 pred <- readRDS("cutoff_reg_pred.rds")  # full model
 c <- levels(pred$cutoff)
 pred.cut1 <- pred %>% filter(cutoff==c[1]) %>% select(Uwi, Target, Pred)
@@ -420,20 +429,86 @@ x <- pred.cut1 %>%
   left_join(pred.cut3, by="Uwi") %>% rename(cut3=Pred) %>%
   select(-Uwi)
 
-q.rec <- qRecCurv(x) * 100
+# top quartile
+# q.rec0 <- qRecCurv(x) * 100
+# q.rec <- q.rec0[-c(1:12),]  # start from 0.5%
+# Round to integer percentage
+# index <- ceiling(nrow(q.rec)*seq(0.1, 100, 0.1)/100)
+# q.rec <- q.rec[index, ]
+
+# bottom quartile
+q.rec0 <- qRecCurvBottom(x) * 100
+q.rec <- q.rec0[-c(1:12),]
+
 q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
-q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 cutoff by 2010-11-01")
-q.rec3 <- q.rec %>% select(True, X3) %>% rename(RecRate=X3) %>% mutate(Method="3 cutoff by 2011-01-01")
-q.rec4 <- q.rec %>% select(True, X4) %>% rename(RecRate=X4) %>% mutate(Method="4 cutoff by 2011-03-01")
+q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 11% Training ~ 297 producers, 83 cored wells by 2011-11-01")
+q.rec3 <- q.rec %>% select(True, X3) %>% rename(RecRate=X3) %>% mutate(Method="3 16% Training ~ 418 producers, 83 cored wells by 2012-01-01")
+q.rec4 <- q.rec %>% select(True, X4) %>% rename(RecRate=X4) %>% mutate(Method="4 21% Training ~ 542 producers, 83 cored wells by 2012-03-01")
 
 q.rec <- q.rec1 %>% union(q.rec2) %>% union(q.rec3) %>% union(q.rec4)
+
 
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#787777", "red", "#5E9F37", "#007cd2")) +
-  xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  #xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
   #scale_y_continuous(limits=c(50, 90)) +
-  #scale_x_continuous(limits=c(0, 50)) +
+  #scale_x_continuous(limits=c(0, 5)) +
+  theme(#legend.position="none",
+    axis.title.x = element_text(size=24),
+    axis.title.y = element_text(size=24),
+    axis.text.x = element_text(colour="grey20",size=15),
+    axis.text.y = element_text(colour="grey20",size=15),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 20),
+    legend.justification=c(1,0), legend.position=c(1,0),
+    legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
+  )
+
+
+
+#@@ IHS dataset Comparison of different cutoff date for the full model
+pred <- readRDS("cutoff_reg_pred_IHS_m12.rds")  # full model
+c <- levels(pred$cutoff)
+pred.cut1 <- pred %>% filter(cutoff==c[1]) %>% select(Entity, First.12.Month.Liquid.norm.perforation, Pred)
+pred.cut2 <- pred %>% filter(cutoff==c[2]) %>% select(Entity, Pred)
+pred.cut3 <- pred %>% filter(cutoff==c[3]) %>% select(Entity, Pred)
+pred.cut4 <- pred %>% filter(cutoff==c[4]) %>% select(Entity, Pred)
+
+x <- pred.cut1 %>%
+  left_join(pred.cut2, by="Entity") %>% rename(cut1=Pred.x) %>% rename(cut2=Pred.y) %>%
+  left_join(pred.cut3, by="Entity") %>% rename(cut3=Pred) %>%
+  left_join(pred.cut4, by="Entity") %>% rename(cut4=Pred) %>%
+  select(-Entity) %>% rename(Target=First.12.Month.Liquid.norm.perforation)
+
+# top quartile
+q.rec0 <- qRecCurv(x) * 100
+q.rec <- q.rec0[-c(1:12),]  # start from 0.5%
+# Round to integer percentage
+# index <- ceiling(nrow(q.rec)*seq(0.1, 100, 0.1)/100)
+# q.rec <- q.rec[index, ]
+
+# bottom quartile
+# q.rec0 <- qRecCurvBottom(x) * 100
+# q.rec <- q.rec0[-c(1:12),]
+
+q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
+q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 5%   Training ~ 233 producers, 39 cored wells by 2012-02-01")
+q.rec3 <- q.rec %>% select(True, X3) %>% rename(RecRate=X3) %>% mutate(Method="3 10% Training ~ 477 producers, 50 cored wells by 2012-06-01")
+q.rec4 <- q.rec %>% select(True, X4) %>% rename(RecRate=X4) %>% mutate(Method="4 16% Training ~ 741 producers, 55 cored wells by 2012-09-01")
+q.rec5 <- q.rec %>% select(True, X5) %>% rename(RecRate=X5) %>% mutate(Method="5 21% Training ~ 952 producers, 57 cored wells by 2012-11-01")
+
+q.rec <- q.rec1 %>% union(q.rec2) %>% union(q.rec3) %>% union(q.rec4) %>% union(q.rec5)
+  
+
+ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
+  geom_line(lwd=1.2) +
+  scale_color_manual(values=c("#787777", "orange", "#5E9F37", "#007cd2", "red")) +
+  xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  #xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
+  #scale_y_continuous(limits=c(50, 90)) +
+  #scale_x_continuous(limits=c(0, 5)) +
   theme(#legend.position="none",
     axis.title.x = element_text(size=24),
     axis.title.y = element_text(size=24),
@@ -451,7 +526,8 @@ ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) +
 #-------------------------------------------------------------------------------------------------------------------------
 ### Time dependent study
 #-------------------------------------------------------------------------------------------------------------------------
-#@@ Effect of different cut off date <=> different training %
+
+#@@ Kaggle's Data: Effect of different cut off date <=> different training %
 
 # Cut off date
 cutoff <- c("2010-11-01", "2011-01-01", "2011-03-01")
@@ -465,6 +541,174 @@ for(i in 1:length(cutoff)){
   sol.all <- rbind(sol.all, sol[[1]])
   pred.all <- rbind(pred.all, data.frame(sol[[2]], cutoff=cutoff[i]))
 }
-saveRDS(sol.all, "cutoff_reg_mse.rds")
-saveRDS(pred.all, "cutoff_reg_pred.rds")
+#saveRDS(sol.all, "cutoff_reg_mse.rds")
+#saveRDS(pred.all, "cutoff_reg_pred.rds")
 
+
+
+#@@ IHS & Core Lab data: Effect of different cut off date <=> different training %
+
+# Cut off date
+cutoff <- c("2011-02-01", "2011-06-01", "2011-09-01", "2011-11-01")
+
+set.seed(999);  sol.all <- NULL; pred.all <- NULL;
+sol1 <- runRFReg3(d5p,  cutoff=cutoff[1], model=formula.reg.IHS.chron, m=12, no.tree=1000, ntrace=500)
+sol2 <- runRFReg3(d10p, cutoff=cutoff[2], model=formula.reg.IHS.chron, m=12, no.tree=1000, ntrace=500)
+sol3 <- runRFReg3(d15p, cutoff=cutoff[3], model=formula.reg.IHS.chron, m=12, no.tree=1000, ntrace=500)
+sol4 <- runRFReg3(d20p, cutoff=cutoff[4], model=formula.reg.IHS.chron, m=12, no.tree=1000, ntrace=500)
+sol.all <- rbind(sol.all, sol1[[1]], sol2[[1]], sol3[[1]], sol4[[1]])
+pred.all <- rbind(pred.all, 
+                  data.frame(sol1[[2]], cutoff=cutoff[1]),
+                  data.frame(sol2[[2]], cutoff=cutoff[2]),
+                  data.frame(sol3[[2]], cutoff=cutoff[3]),
+                  data.frame(sol4[[2]], cutoff=cutoff[4])
+                  )
+
+saveRDS(sol.all, "cutoff_reg_mse_IHS_m12_noloc.rds")
+saveRDS(pred.all, "cutoff_reg_pred_IHS_m12_noloc.rds")
+
+
+
+#@@ IHS & Core Lab data: Effect of different cut off date <=> different training %
+# Top Q1 by different training percentage
+
+# RF using Loc + Cov (m=13)
+set.seed(777)
+q1.rec <- NULL
+for (i in 1:nrow(cut.info)){
+    cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
+    cut$year <- cut$year-1
+    cut <- as.Date(cut)
+    
+    d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])      
+    
+    sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro, m=15, no.tree=1000, ntrace=500)
+    
+    x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
+    
+    q.rec0 <- qRecCurv(x) * 100
+    q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+}
+
+q1rec.rf <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf=q1.rec)
+#saveRDS(q1rec.rf, "q1_rec_rf_reg_diff_cutoff_m15.rds")
+q1rec.rf.m13 <- readRDS("q1_rec_rf_reg_diff_cutoff_m13.rds")  # full model
+
+
+
+# RF using Loc only
+set.seed(777)
+q1.rec <- NULL
+for (i in 1:nrow(cut.info)){
+  cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
+  cut$year <- cut$year-1
+  cut <- as.Date(cut)
+  
+  d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])      
+  
+  sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro.loc, m=2, no.tree=1000, ntrace=500)
+  
+  x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
+  
+  q.rec0 <- qRecCurv(x) * 100
+  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+}
+
+q1rec.rf.loc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf.loc=q1.rec)
+#saveRDS(q1rec.rf.loc, "q1_rec_rf_reg_loconly_diff_cutoff.rds")
+
+
+# RF w/o Loc 
+set.seed(777)
+q1.rec <- NULL
+for (i in 1:nrow(cut.info)){
+  cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
+  cut$year <- cut$year-1
+  cut <- as.Date(cut)
+  
+  d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])      
+  
+  sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro.noloc, m=12, no.tree=1000, ntrace=500)
+  
+  x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
+  
+  q.rec0 <- qRecCurv(x) * 100
+  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+}
+
+q1rec.rf.noloc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf.noloc=q1.rec)
+saveRDS(q1rec.rf.noloc, "q1_rec_rf_reg_noloc_diff_cutoff.rds")
+
+
+
+# Kriging
+q1.rec <- NULL
+for (i in 1:nrow(cut.info)){
+  cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
+  cut$year <- cut$year-1
+  cut <- as.Date(cut)
+  
+  d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])   
+  
+  d <- d[d$Date.Production.Start>cut, ]  # out of sample data (test data)
+  
+  x <- d %>% select(Norm.Lat.12.Month.Liquid, Kriged.Production) %>% rename(Target=Norm.Lat.12.Month.Liquid, kriged=Kriged.Production)
+    
+  q.rec0 <- qRecCurv(x) * 100
+  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+}
+
+q1rec.kriged <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.kriged=q1.rec)
+#saveRDS(q1rec.kriged, "q1_rec_kriged_diff_cutoff.rds")
+
+
+
+# Rule-based
+q1.rec <- NULL
+for (i in 1:nrow(cut.info)){
+  cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
+  cut$year <- cut$year-1
+  cut <- as.Date(cut)
+  
+  d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])   
+  
+  d <- d[d$Date.Production.Start>cut, ]  # out of sample data (test data)
+  
+  x <- d %>% select(Norm.Lat.12.Month.Liquid, Big.Rules.Score) %>% rename(Target=Norm.Lat.12.Month.Liquid, Rule=Big.Rules.Score)
+  
+  q.rec0 <- qRecCurv(x) * 100
+  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+}
+
+q1rec.rule <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rule=q1.rec)
+#saveRDS(q1rec.rule, "q1_rec_rule_diff_cutoff.rds")
+
+
+
+# Kaggle data
+d <- kaggle.dat
+d <- d[d$Date.Production.Start>'2012-08-05', ]
+x <- d %>% select(Norm.Lat.12.Month.Liquid, Kaggle.Prediction.Oil) %>% rename(Target=Norm.Lat.12.Month.Liquid, kaggle=Kaggle.Prediction.Oil)
+
+q.rec0 <- qRecCurv(x) * 100
+q1.rec <- q.rec0[ceiling(nrow(x) * 0.25),2]
+q1rec.kaggle <- data.frame(pct.IHS=0.504604840436924, pct.Core=0.987951807228916, q1rec.kaggle=q1.rec)
+saveRDS(q1rec.kaggle, "q1_rec_kaggle_diff_cutoff.rds")
+
+
+# Plots
+q1rec.rf.m13 <- readRDS("q1_rec_rf_reg_diff_cutoff_m13.rds")
+q1rec.rf.loc <- readRDS("q1_rec_rf_reg_loconly_diff_cutoff.rds")
+q1rec.kriged <- readRDS("q1_rec_kriged_diff_cutoff.rds")
+q1rec.rule <- readRDS("q1_rec_rule_diff_cutoff.rds")
+q1rec.kaggle <- readRDS("q1_rec_kaggle_diff_cutoff.rds")
+
+dat <- rbind(data.frame(pct=q1rec.rf.m13[,1], rec=q1rec.rf.m13[,3], method="Random Forest"), 
+             data.frame(pct=q1rec.kriged[,1], rec=q1rec.kriged[,3], method="Kriged"),
+             data.frame(pct=q1rec.rf.loc[,1], rec=q1rec.rf.loc[,3], method="Random Forest (Location Only)"), 
+             data.frame(pct=q1rec.rule[,1], rec=q1rec.rule[,3], method="Rule based"),
+             data.frame(pct=q1rec.kaggle[,1], rec=q1rec.kaggle[,3], method="Kaggle")
+              )
+
+
+plotMLine(dat,"Percentage of Available Producers for Training", "Out of Sample Top Quartile Recovery Rate")

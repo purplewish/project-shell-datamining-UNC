@@ -1,31 +1,46 @@
 ######################################################################################################################
-# Header file
+# Load Chronological IHS Data
 ######################################################################################################################
 
 #---------------------------------------------------------------------------------------------------------------------
-### Setup
+### Data path
 #---------------------------------------------------------------------------------------------------------------------
-rm(list=ls())
-options(scipen=999)
-#options(java.parameters = "-Xmx10000m")
-options(java.parameters = "-Xmx100g")
+wd <- getwd()
+setwd(file.path(repo_path, "Data/ChronIHS"))
 
-
-#---------------------------------------------------------------------------------------------------------------------
-### Library
-#---------------------------------------------------------------------------------------------------------------------
-library(randomForest)
-library(ggplot2)
-library(reshape2)
-library(dplyr)
-#library(bartMachine)
-library(cvTools)
-library(grid)
 
 
 #---------------------------------------------------------------------------------------------------------------------
-### Project folder path
+### Load data
 #---------------------------------------------------------------------------------------------------------------------
-#repo_path = "C:/Apps/projects/DataMiningUNC"
-repo_path = "Z:/project/DataMiningUNC"
+#@@ Cov + Location + prod start date
+keep <- c(1,5,6,11,15,34:63)
+
+a <- read.csv("KrigedCoreData-2012-02-01-5p.csv", as.is=T)
+d5p <- a[, keep]
+
+a <- read.csv("KrigedCoreData-2012-06-01-10p.csv", as.is=T)
+d10p <- a[, keep]
+
+a <- read.csv("KrigedCoreData-2012-09-01-15p.csv", as.is=T)
+d15p <- a[, keep]
+
+a <- read.csv("KrigedCoreData-2012-11-01-20p.csv", as.is=T)
+d20p <- a[, keep]
+
+#x.vars <- names(d5p)[-c(1,2,3,5,35)]  # covars without location 
+x.vars <- names(d5p)[-c(1,5,35)]  # covars with location
+y <- names(d5p)[35]  # response
+
+
+#@@ formula
+formula.reg.IHS.chron <- formula(paste(paste(y,"~"), paste(x.vars,collapse="+")))
+
+
+
+#---------------------------------------------------------------------------------------------------------------------
+### Reset working dir
+#---------------------------------------------------------------------------------------------------------------------
+setwd(wd)
+
 
