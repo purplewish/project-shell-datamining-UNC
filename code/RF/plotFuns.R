@@ -328,19 +328,22 @@ plotMLine <- function(dat, xlab, ylab){
   # Returns:
   #   x-y line plot
   a <- names(dat); 
-  g <- ggplot(data=dat, aes_string(x=a[1],y=a[2], colour=a[3], group=a[3])) + 
+  g <- ggplot(data=dat, aes_string(x=a[1],y=a[2], colour=a[3], group=a[3])) + ylim(10,75) +
     #geom_line(size=1, colour="#000000") + geom_point(size=4) + scale_x_continuous(breaks=seq(1,31,1)) + #ylim(0.5,1) +
     geom_line(lwd=1.2) + geom_point(size=4) + 
-    scale_color_manual(values=c("red", "#007cd2","orange", "#5E9F37", "black")) +
+    #scale_color_manual(values=c("red", "#007cd2","orange", "#5E9F37", "black")) +
+    #scale_color_manual(values=c("red", "#007cd2", "#5E9F37", "black")) +
+    scale_color_manual(values=c("red", "#007cd2", "black")) +
     xlab(xlab) + ylab(ylab) + 
     theme(#legend.position="none",
       axis.title.x = element_text(size=24),
       axis.title.y = element_text(size=24),
-      axis.text.x = element_text(colour="grey20",size=15),
-      axis.text.y = element_text(colour="grey20",size=15),
+      #axis.text.x = element_text(colour="grey20",size=15),
+      axis.text.x = element_text(angle=90, hjust=1, colour='black', size=15),
+      axis.text.y = element_text(colour="black",size=15),
       legend.title=element_blank(),
       legend.text = element_text(size = 20),
-      #legend.justification=c(1,0), legend.position=c(1,0),
+      legend.justification=c(1,0), legend.position=c(1,0),
       legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
     )
   

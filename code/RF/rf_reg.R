@@ -9,10 +9,10 @@
 setwd("Z:/GitHup/project-shell-datamining-UNC/code/RF")
 
 source("header.R")
-source("loadData.R")
+#source("loadData.R")
 source("runRF.R")
 source("plotFuns.R")
-source("loadChronIHSData.R")
+#source("loadChronIHSData.R")
 source("loadChronIHSData2.R")
 
 # Results directory
@@ -573,8 +573,10 @@ saveRDS(pred.all, "cutoff_reg_pred_IHS_m12_noloc.rds")
 # Top Q1 by different training percentage
 
 # RF using Loc + Cov (m=13)
+# RF using Loc + Cov + completion par (m=6 better than 12)
 set.seed(777)
-q1.rec <- NULL
+q1.top.rec <- NULL
+q1.bot.rec <- NULL
 for (i in 1:nrow(cut.info)){
     cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
     cut$year <- cut$year-1
@@ -582,23 +584,30 @@ for (i in 1:nrow(cut.info)){
     
     d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])      
     
-    sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro, m=15, no.tree=1000, ntrace=500)
+    sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro, m=5, no.tree=1000, ntrace=500)
     
     x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
     
-    q.rec0 <- qRecCurv(x) * 100
-    q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+    q1.top.rec0 <- qRecCurv(x) * 100
+    q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+    
+    q1.bot.rec0 <- qRecCurvBottom(x) * 100
+    q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2])
 }
 
-q1rec.rf <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf=q1.rec)
+q1.top.rec.rf <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.top.rf=q1.top.rec)
+q1.bot.rec.rf <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.bot.rf=q1.bot.rec)
+saveRDS(q1.top.rec.rf, "new_q1_top_rec_rf_reg_diff_cutoff_m5.rds")  # new:add engineering pars
+saveRDS(q1.bot.rec.rf, "new_q1_bot_rec_rf_reg_diff_cutoff_m5.rds")
 #saveRDS(q1rec.rf, "q1_rec_rf_reg_diff_cutoff_m15.rds")
-q1rec.rf.m13 <- readRDS("q1_rec_rf_reg_diff_cutoff_m13.rds")  # full model
-
+#q1.top.rec.rf.m13 <- readRDS("q1_top_rec_rf_reg_diff_cutoff_m13.rds")  # full model
+#q1.bot.rec.rf.m13 <- readRDS("q1_bot_rec_rf_reg_diff_cutoff_m13.rds")  # full model
 
 
 # RF using Loc only
 set.seed(777)
-q1.rec <- NULL
+q1.top.rec <- NULL
+q1.bot.rec <- NULL
 for (i in 1:nrow(cut.info)){
   cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
   cut$year <- cut$year-1
@@ -610,17 +619,27 @@ for (i in 1:nrow(cut.info)){
   
   x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
   
-  q.rec0 <- qRecCurv(x) * 100
-  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+  q1.top.rec0 <- qRecCurv(x) * 100
+  q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+  
+  q1.bot.rec0 <- qRecCurvBottom(x) * 100
+  q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2])  
 }
 
-q1rec.rf.loc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf.loc=q1.rec)
+q1.top.rec.rf.loc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.top.rf.loc=q1.top.rec)
+q1.bot.rec.rf.loc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.bot.rf.loc=q1.bot.rec)
+saveRDS(q1.top.rec.rf.loc, "q1_top_rec_rf_reg_loconly_diff_cutoff.rds")
+saveRDS(q1.bot.rec.rf.loc, "q1_bot_rec_rf_reg_loconly_diff_cutoff.rds")
+
+#q1rec.rf.loc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf.loc=q1.rec)
+#saveRDS(q1rec.rf.loc, "q1_rec_rf_reg_loconly_diff_cutoff_new.rds")
 #saveRDS(q1rec.rf.loc, "q1_rec_rf_reg_loconly_diff_cutoff.rds")
 
 
 # RF w/o Loc 
 set.seed(777)
-q1.rec <- NULL
+q1.top.rec <- NULL
+q1.bot.rec <- NULL #m=6 or 10 with completion engineering pars
 for (i in 1:nrow(cut.info)){
   cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
   cut$year <- cut$year-1
@@ -628,21 +647,32 @@ for (i in 1:nrow(cut.info)){
   
   d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])      
   
-  sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro.noloc, m=12, no.tree=1000, ntrace=500)
+  sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro.noloc, m=6, no.tree=1000, ntrace=500)
   
   x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
   
-  q.rec0 <- qRecCurv(x) * 100
-  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+  q1.top.rec0 <- qRecCurv(x) * 100
+  q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+  
+  q1.bot.rec0 <- qRecCurvBottom(x) * 100
+  q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2])  
 }
 
-q1rec.rf.noloc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf.noloc=q1.rec)
-saveRDS(q1rec.rf.noloc, "q1_rec_rf_reg_noloc_diff_cutoff.rds")
+
+q1.top.rec.rf.noloc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.top.rf.noloc=q1.top.rec)
+q1.bot.rec.rf.noloc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.bot.rf.noloc=q1.bot.rec)
+saveRDS(q1.top.rec.rf.noloc, "new_q1_top_rec_rf_reg_noloc_diff_cutoff_m6.rds")
+saveRDS(q1.bot.rec.rf.noloc, "new_q1_bot_rec_rf_reg_noloc_diff_cutoff_m6.rds")
+
+# q1rec.rf.noloc <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rf.noloc=q1.rec)
+# saveRDS(q1rec.rf.noloc, "q1_rec_rf_reg_noloc_diff_cutoff_m12_new.rds")
+#saveRDS(q1rec.rf.noloc, "q1_rec_rf_reg_noloc_diff_cutoff.rds")
 
 
 
 # Kriging
-q1.rec <- NULL
+q1.top.rec <- NULL
+q1.bot.rec <- NULL
 for (i in 1:nrow(cut.info)){
   cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
   cut$year <- cut$year-1
@@ -654,17 +684,27 @@ for (i in 1:nrow(cut.info)){
   
   x <- d %>% select(Norm.Lat.12.Month.Liquid, Kriged.Production) %>% rename(Target=Norm.Lat.12.Month.Liquid, kriged=Kriged.Production)
     
-  q.rec0 <- qRecCurv(x) * 100
-  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+  q1.top.rec0 <- qRecCurv(x) * 100
+  q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+  
+  q1.bot.rec0 <- qRecCurvBottom(x) * 100
+  q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2]) 
 }
 
-q1rec.kriged <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.kriged=q1.rec)
+q1.top.rec.kriged <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.top.kriged=q1.top.rec)
+q1.bot.rec.kriged <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.bot.kriged=q1.bot.rec)
+saveRDS(q1.top.rec.kriged, "q1_top_rec_kriged_reg_diff_cutoff.rds")
+saveRDS(q1.bot.rec.kriged, "q1_bot_rec_kriged_reg_diff_cutoff.rds")
+
+# q1rec.kriged <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.kriged=q1.rec)
+# saveRDS(q1rec.kriged, "q1_rec_kriged_diff_cutoff_new.rds")
 #saveRDS(q1rec.kriged, "q1_rec_kriged_diff_cutoff.rds")
 
 
 
 # Rule-based
-q1.rec <- NULL
+q1.top.rec <- NULL
+q1.bot.rec <- NULL
 for (i in 1:nrow(cut.info)){
   cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
   cut$year <- cut$year-1
@@ -676,11 +716,20 @@ for (i in 1:nrow(cut.info)){
   
   x <- d %>% select(Norm.Lat.12.Month.Liquid, Big.Rules.Score) %>% rename(Target=Norm.Lat.12.Month.Liquid, Rule=Big.Rules.Score)
   
-  q.rec0 <- qRecCurv(x) * 100
-  q1.rec <- c(q1.rec, q.rec0[ceiling(nrow(x) * 0.25),2])
+  q1.top.rec0 <- qRecCurv(x) * 100
+  q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+  
+  q1.bot.rec0 <- qRecCurvBottom(x) * 100
+  q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2]) 
 }
 
-q1rec.rule <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rule=q1.rec)
+q1.top.rec.rule <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.top.rule=q1.top.rec)
+q1.bot.rec.rule <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1.bot.rule=q1.bot.rec)
+saveRDS(q1.top.rec.rule, "q1_top_rec_rule_reg_diff_cutoff.rds")
+saveRDS(q1.bot.rec.rule, "q1_bot_rec_rule_reg_diff_cutoff.rds")
+
+#q1rec.rule <- data.frame(pct.IHS=cut.info$percentage.IHS.used, pct.Core=cut.info$precentage.CoreLabs.used, q1rec.rule=q1.rec)
+#saveRDS(q1rec.rule, "q1_rec_rule_diff_cutoff_new.rds")
 #saveRDS(q1rec.rule, "q1_rec_rule_diff_cutoff.rds")
 
 
@@ -690,25 +739,92 @@ d <- kaggle.dat
 d <- d[d$Date.Production.Start>'2012-08-05', ]
 x <- d %>% select(Norm.Lat.12.Month.Liquid, Kaggle.Prediction.Oil) %>% rename(Target=Norm.Lat.12.Month.Liquid, kaggle=Kaggle.Prediction.Oil)
 
-q.rec0 <- qRecCurv(x) * 100
-q1.rec <- q.rec0[ceiling(nrow(x) * 0.25),2]
-q1rec.kaggle <- data.frame(pct.IHS=0.504604840436924, pct.Core=0.987951807228916, q1rec.kaggle=q1.rec)
-saveRDS(q1rec.kaggle, "q1_rec_kaggle_diff_cutoff.rds")
+# q.rec0 <- qRecCurv(x) * 100
+# q1.rec <- q.rec0[ceiling(nrow(x) * 0.25),2]
+q1.top.rec <- NULL
+q1.bot.rec <- NULL
+
+q1.top.rec0 <- qRecCurv(x) * 100
+q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+
+q1.bot.rec0 <- qRecCurvBottom(x) * 100
+q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2]) 
+
+
+q1.top.rec.kaggle <- data.frame(pct.IHS=0.504604840436924, pct.Core=0.987951807228916, q1.top.kaggle=q1.top.rec)
+q1.bot.rec.kaggle <- data.frame(pct.IHS=0.504604840436924, pct.Core=0.987951807228916, q1.bot.kaggle=q1.bot.rec)
+saveRDS(q1.top.rec.kaggle, "q1_top_rec_kaggle_reg_diff_cutoff.rds")
+saveRDS(q1.bot.rec.kaggle, "q1_bot_rec_kaggle_reg_diff_cutoff.rds")
+
+#q1rec.kaggle <- data.frame(pct.IHS=0.504604840436924, pct.Core=0.987951807228916, q1rec.kaggle=q1.rec)
+#saveRDS(q1rec.kaggle, "q1_rec_kaggle_diff_cutoff_new.rds")
+#saveRDS(q1rec.kaggle, "q1_rec_kaggle_diff_cutoff.rds")
 
 
 # Plots
-q1rec.rf.m13 <- readRDS("q1_rec_rf_reg_diff_cutoff_m13.rds")
-q1rec.rf.loc <- readRDS("q1_rec_rf_reg_loconly_diff_cutoff.rds")
-q1rec.kriged <- readRDS("q1_rec_kriged_diff_cutoff.rds")
-q1rec.rule <- readRDS("q1_rec_rule_diff_cutoff.rds")
-q1rec.kaggle <- readRDS("q1_rec_kaggle_diff_cutoff.rds")
+#q1.top.rf <- readRDS("new_q1_top_rec_rf_reg_diff_cutoff_m6.rds")  # with location
+#q1.bot.rf <- readRDS("new_q1_bot_rec_rf_reg_diff_cutoff_m6.rds")
 
-dat <- rbind(data.frame(pct=q1rec.rf.m13[,1], rec=q1rec.rf.m13[,3], method="Random Forest"), 
-             data.frame(pct=q1rec.kriged[,1], rec=q1rec.kriged[,3], method="Kriged"),
-             data.frame(pct=q1rec.rf.loc[,1], rec=q1rec.rf.loc[,3], method="Random Forest (Location Only)"), 
-             data.frame(pct=q1rec.rule[,1], rec=q1rec.rule[,3], method="Rule based"),
-             data.frame(pct=q1rec.kaggle[,1], rec=q1rec.kaggle[,3], method="Kaggle")
+q1.top.rf <- readRDS("new_q1_top_rec_rf_reg_noloc_diff_cutoff_m10.rds") # no location
+q1.bot.rf <- readRDS("new_q1_bot_rec_rf_reg_noloc_diff_cutoff_m10.rds")
+
+q1.top.rf.loc <- readRDS("q1_top_rec_rf_reg_loconly_diff_cutoff.rds")
+q1.bot.rf.loc <- readRDS("q1_bot_rec_rf_reg_loconly_diff_cutoff.rds")
+
+q1.top.kriged <- readRDS("q1_top_rec_kriged_reg_diff_cutoff.rds")
+q1.bot.kriged <- readRDS("q1_bot_rec_kriged_reg_diff_cutoff.rds")
+
+#write.csv(q1.top.kriged, file = "topq1_rec_kriged.csv")
+#write.csv(q1.bot.kriged, file = "botq1_rec_kriged.csv")
+
+
+q1.top.rule <- readRDS("q1_top_rec_rule_reg_diff_cutoff.rds")
+q1.bot.rule <- readRDS("q1_bot_rec_rule_reg_diff_cutoff.rds")
+
+q1.top.kaggle <- readRDS("q1_top_rec_kaggle_reg_diff_cutoff.rds")
+q1.bot.kaggle <- readRDS("q1_bot_rec_kaggle_reg_diff_cutoff.rds")
+
+
+
+dat <- rbind(data.frame(pct=q1.top.rf[,1], rec=q1.top.rf[,3], method="Random Forest"), 
+             data.frame(pct=q1.top.kriged[,1], rec=q1.top.kriged[,3], method="Kriged"),
+             data.frame(pct=q1.top.rf.loc[,1], rec=q1.top.rf.loc[,3], method="Random Forest (Location Only)"), 
+             data.frame(pct=q1.top.rule[,1], rec=q1.top.rule[,3], method="Rule based"),
+             data.frame(pct=q1.top.kaggle[,1], rec=q1.top.kaggle[,3], method="Kaggle")
               )
 
 
-plotMLine(dat,"Percentage of Available Producers for Training", "Out of Sample Top Quartile Recovery Rate")
+dat2 <- rbind(data.frame(pct=q1.bot.rf[,1], rec=q1.bot.rf[,3], method="Random Forest"), 
+             data.frame(pct=q1.bot.kriged[,1], rec=q1.bot.kriged[,3], method="Kriged"),
+             data.frame(pct=q1.bot.rf.loc[,1], rec=q1.bot.rf.loc[,3], method="Random Forest (Location Only)"), 
+             data.frame(pct=q1.bot.rule[,1], rec=q1.bot.rule[,3], method="Rule based"),
+             data.frame(pct=q1.bot.kaggle[,1], rec=q1.bot.kaggle[,3], method="Kaggle")
+)
+
+
+
+
+cutoff <- cut.info$cut.off.date
+pct <- paste0(round(cut.info$percentage.IHS.used*100,2), "%")
+lab <- mapply(function(x,y) paste0(x," (",y,")"), cutoff, pct)
+
+
+dat <- rbind(data.frame(pct=lab, rec=q1.top.rf[,3], method="Random Forest"), 
+             #data.frame(pct=lab, rec=q1.top.kriged[,3], method="Kriged"),
+             #data.frame(pct=cutoff, rec=q1.top.rf.loc[,3], method="Random Forest (Location Only)"), 
+             data.frame(pct=lab, rec=q1.top.rule[,3], method="Rule based"),
+             data.frame(pct="2013-08-03 (50.46%)", rec=q1.top.kaggle[,3], method="Kaggle")
+)
+
+
+dat2 <- rbind(data.frame(pct=lab, rec=q1.bot.rf[,3], method="Random Forest"), 
+              #data.frame(pct=lab, rec=q1.bot.kriged[,3], method="Kriged"),
+              #data.frame(pct=cutoff, rec=q1.bot.rf.loc[,3], method="Random Forest (Location Only)"), 
+              data.frame(pct=lab, rec=q1.bot.rule[,3], method="Rule based"),
+              data.frame(pct="2013-08-03 (50.46%)", rec=q1.bot.kaggle[,3], method="Kaggle")
+)
+
+
+
+plotMLine(dat,"Cutoff Date for Training Set (Available Producer%)", "Out of Sample Top Quartile Recovery Rate")
+plotMLine(dat2,"Cutoff Date for Training Set (Available Producer%)", "Out of Sample Bottom Quartile Recovery Rate")

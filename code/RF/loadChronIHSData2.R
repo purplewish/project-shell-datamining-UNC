@@ -6,7 +6,9 @@
 ### Data path
 #---------------------------------------------------------------------------------------------------------------------
 wd <- getwd()
-setwd(file.path(repo_path, "Data/compBigRulesKaggle"))
+#setwd(file.path(repo_path, "Data/compBigRulesKaggle"))
+setwd(file.path(repo_path, "Data/compBigRulesKaggleMoreCov"))
+
 
 
 
@@ -15,7 +17,9 @@ setwd(file.path(repo_path, "Data/compBigRulesKaggle"))
 #---------------------------------------------------------------------------------------------------------------------
 #@@ Cov + Location + prod start date
 cut.info <- read.csv("KrigedCoreDataOverview.csv", as.is=T)
-keep <- c(2,8,10:42,48:50,54)
+#keep <- c(2,8,10:42,48:50,54)
+#keep <- c(2,8,10:42,53:55,59)
+keep <- c(2,8,10:42,45:50,53:55,59)
 
 chro.dat <- NULL
 for (i in 1:nrow(cut.info) ) {
@@ -25,11 +29,13 @@ for (i in 1:nrow(cut.info) ) {
 }
 
 
-x.vars <- names(a)[-c(1,3,36:41)]  # covars with location
+#x.vars <- names(a)[-c(1,3,36:41)]  # covars with location
+x.vars <- names(a)[-c(1,3,42:47)]  # covars with location
 loc <- names(a)[c(4,5)]
-x.vars.noloc <- names(a)[-c(1,3:5,36:41)] # covars w/o location
+x.vars.noloc <- names(a)[-c(1,3:5,42:47)] # covars w/o location
 
-y <- names(a)[36]  # response
+#y <- names(a)[36]  # response
+y <- names(a)[42]  # response
 
 
 

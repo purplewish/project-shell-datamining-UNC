@@ -328,7 +328,8 @@ runRFReg4 <- function(dat, cutoff, model, m, no.tree, ntrace=500){
   #################################################################################################
   
   # Predict test dataset and calculate mse
-  test.pred <- cbind(test[,c(1,36)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
+  #test.pred <- cbind(test[,c(1,36)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
+  test.pred <- cbind(test[,c(1,42)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
   mse <- sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
   
   # Prediction results (combine observed with predict)
@@ -464,11 +465,11 @@ runBartRegCV <- function(dat, no.tree, no.burn, no.after.burn, k.fold=5, k=2, q=
 # function that computes the fraction of correctly identified entries in the top n%-quantile for all n
 #
 #usage
-# qrecoverycurve(x)
+# qRecCurv(x)
 #
 #arguments
 #  x               a data frame with at least 2 columns that are all at least ordinal
-#                   column 1 contains true values, the other columns contains predictions that are rank proxies
+#                  column 1 contains true values, the other columns contains predictions that are rank proxies
 #
 #value
 #  a data frame; 
