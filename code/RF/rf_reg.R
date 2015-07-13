@@ -828,3 +828,100 @@ dat2 <- rbind(data.frame(pct=lab, rec=q1.bot.rf[,3], method="Random Forest"),
 
 plotMLine(dat,"Cutoff Date for Training Set (Available Producer%)", "Out of Sample Top Quartile Recovery Rate")
 plotMLine(dat2,"Cutoff Date for Training Set (Available Producer%)", "Out of Sample Bottom Quartile Recovery Rate")
+
+
+
+
+#@@ Recover rate curve with new chronological data (82 cored wells)
+# RF w/o Loc 
+set.seed(777)
+pred.all <- NULL
+for (i in c(4,7,11,13,15,17)){
+  cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
+  cut$year <- cut$year-1
+  cut <- as.Date(cut)
+  
+  d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])      
+  
+  sol <- runRFReg4(d, cutoff=cut, model=formula.reg.chro.noloc, m=15, no.tree=1000, ntrace=500)
+  pred.all <- rbind(pred.all, data.frame(sol[[2]], cutoff=cut.info$cut.off.date[i]))
+  
+#   x <- sol[[2]] %>% select(-UWI) %>% rename(Target=Norm.Lat.12.Month.Liquid, RF=Pred)
+#   
+#   q1.top.rec0 <- qRecCurv(x) * 100
+#   q1.top.rec <- c(q1.top.rec, q1.top.rec0[ceiling(nrow(x) * 0.25),2])
+#   
+#   q1.bot.rec0 <- qRecCurvBottom(x) * 100
+#   q1.bot.rec <- c(q1.bot.rec, q1.bot.rec0[ceiling(nrow(x) * 0.25),2])  
+}
+
+saveRDS(pred.all, "new_top_rec_rf_reg_noloc_pred_m15.rds")
+
+
+pred <- readRDS("new_top_rec_rf_reg_noloc_pred_m15.rds")  # full model
+c <- levels(pred$cutoff)
+pred.cut1 <- pred %>% filter(cutoff==c[1]) %>% select(Norm.Lat.12.Month.Liquid, Pred) %>% rename(Target=Norm.Lat.12.Month.Liquid, cut1=Pred)
+pred.cut2 <- pred %>% filter(cutoff==c[2]) %>% select(Norm.Lat.12.Month.Liquid, Pred) %>% rename(Target=Norm.Lat.12.Month.Liquid, cut2=Pred)
+pred.cut3 <- pred %>% filter(cutoff==c[3]) %>% select(Norm.Lat.12.Month.Liquid, Pred) %>% rename(Target=Norm.Lat.12.Month.Liquid, cut3=Pred)
+pred.cut4 <- pred %>% filter(cutoff==c[4]) %>% select(Norm.Lat.12.Month.Liquid, Pred) %>% rename(Target=Norm.Lat.12.Month.Liquid, cut4=Pred)
+pred.cut5 <- pred %>% filter(cutoff==c[5]) %>% select(Norm.Lat.12.Month.Liquid, Pred) %>% rename(Target=Norm.Lat.12.Month.Liquid, cut5=Pred)
+pred.cut6 <- pred %>% filter(cutoff==c[6]) %>% select(Norm.Lat.12.Month.Liquid, Pred) %>% rename(Target=Norm.Lat.12.Month.Liquid, cut6=Pred)
+
+
+top.rec1 <- qRecCurv(pred.cut1) * 100
+top.rec2 <- qRecCurv(pred.cut2) * 100
+top.rec3 <- qRecCurv(pred.cut3) * 100
+top.rec4 <- qRecCurv(pred.cut4) * 100
+top.rec5 <- qRecCurv(pred.cut5) * 100
+top.rec6 <- qRecCurv(pred.cut6) * 100
+
+bot.rec1 <- qRecCurvBottom(pred.cut1) * 100
+bot.rec2 <- qRecCurvBottom(pred.cut2) * 100
+bot.rec3 <- qRecCurvBottom(pred.cut3) * 100
+bot.rec4 <- qRecCurvBottom(pred.cut4) * 100
+bot.rec5 <- qRecCurvBottom(pred.cut5) * 100
+bot.rec6 <- qRecCurvBottom(pred.cut6) * 100
+
+
+q.rec0 <- top.rec1 %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
+q.rec1 <- top.rec1 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 5%  Training ~ 252 producers, 46 cored wells by 2012-02-04")
+q.rec2 <- top.rec2 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="3 11% Training ~ 511 producers, 66 cored wells by 2012-06-09")
+q.rec3 <- top.rec3 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="4 23% Training ~ 1049 producers, 71 cored wells by 2012-11-24")
+q.rec4 <- top.rec4 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="5 30% Training ~ 1380 producers, 75 cored wells by 2013-02-16")
+q.rec5 <- top.rec5 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="6 40% Training ~ 1850 producers, 78 cored wells by 2013-05-11")
+q.rec6 <- top.rec6 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="7 51% Training ~ 2356 producers, 82 cored wells by 2013-08-03")
+
+q.rec0 <- bot.rec1 %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
+q.rec1 <- bot.rec1 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 5%  Training ~ 252 producers, 46 cored wells by 2012-02-04")
+q.rec2 <- bot.rec2 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="3 11% Training ~ 511 producers, 66 cored wells by 2012-06-09")
+q.rec3 <- bot.rec3 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="4 23% Training ~ 1049 producers, 71 cored wells by 2012-11-24")
+q.rec4 <- bot.rec4 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="5 30% Training ~ 1380 producers, 75 cored wells by 2013-02-16")
+q.rec5 <- bot.rec5 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="6 40% Training ~ 1850 producers, 78 cored wells by 2013-05-11")
+q.rec6 <- bot.rec6 %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="7 51% Training ~ 2356 producers, 82 cored wells by 2013-08-03")
+
+
+
+q.rec <- q.rec0 %>% union(q.rec1) %>% union(q.rec2) %>% union(q.rec3) %>% 
+         union(q.rec4) %>% union(q.rec5) %>% union(q.rec6)
+  
+
+
+ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
+  geom_line(lwd=1.2) +
+  scale_color_manual(values=c("#787777","#f3f15d", "orange", "#5E9F37", "#a5088d", "#007cd2", "red")) +
+  #xlab("Top Quantile Percentage") + ylab("Out of Sample Recover Rate") + 
+  xlab("Bottom Quantile Percentage") + ylab("Out of Sample Recover Rate") + 
+  #xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
+  #scale_y_continuous(limits=c(50, 90)) +
+  #scale_x_continuous(limits=c(0, 5)) +
+  theme(#legend.position="none",
+    axis.title.x = element_text(size=24),
+    axis.title.y = element_text(size=24),
+    axis.text.x = element_text(colour="grey20",size=15),
+    axis.text.y = element_text(colour="grey20",size=15),
+    legend.title=element_blank(),
+    legend.text = element_text(size = 20),
+    legend.justification=c(1,0), legend.position=c(1,0),
+    legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
+  )
+

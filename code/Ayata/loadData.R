@@ -56,7 +56,7 @@ sd <- bs %>% summarise_each(funs(sd(.,na.rm=TRUE)))
 bs <- bs[, which(sd>0)]
   
 #@@ Remove outlier based on IQR for numeric var
-bs <- bs %>% mutate_each(funs(RmOutlierIQR(.,1.5)), -well, -Condensate)
+bs <- bs %>% mutate_each(funs(RmOutlierIQR(.,2.0)), -well, -Condensate)
   
 #@@ Imputate missing value
 bs <- bs %>% mutate_each(funs(ImputMissValue(.,method=2)), -well, -Condensate)
