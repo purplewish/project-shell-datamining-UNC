@@ -312,7 +312,8 @@ x <- left_join(pred, pred.6v, by="Uwi")
 x <- left_join(x, pred.kaggle, by="Uwi")
 x <- x[,-1]  # rm Uwi
 
-q.rec0 <- qRecCurv(x) * 100
+#q.rec0 <- qRecCurv(x) * 100  # top
+q.rec0 <- qRecCurvBottom(x) *100  # bottom
 #q.rec <- q.rec0[-c(1:7),]
 # Round to integer percentage
 index <- ceiling(nrow(q.rec0)*seq(0.3,100,0.3)/100)
@@ -332,7 +333,8 @@ q.rec <- union(q.rec, q.rec5)
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#fe506e", "black", "#228b22", "#0099cc", "#e95d3c")) +
-  xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
+  #xlab("Top Quantile Percentage") + ylab("Recovery Rate") + 
+  xlab("Bottom Quantile Percentage") + ylab("Recovery Rate") + 
   theme(#legend.position="none",
     axis.title.x = element_text(size=24),
     axis.title.y = element_text(size=24),
@@ -368,12 +370,12 @@ x <- pred.10pct %>%
       select(-Uwi)
 
 # Top quartile
-#q.rec0 <- qRecCurv(x) * 100
+q.rec0 <- qRecCurv(x) * 100
 #q.rec <- q.rec0[-c(1:10),]
 # Round to integer percentage
 
 # Bottom quartile
-q.rec0 <- qRecCurvBottom(x) * 100
+#q.rec0 <- qRecCurvBottom(x) * 100
 
 index <- c(ceiling(nrow(q.rec0)*seq(0.2, 100, 0.2)/100))
 q.rec <- q.rec0[index, ]
@@ -400,8 +402,8 @@ q.rec <- q.rec1 %>% union(q.rec2) %>%
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#787777", "#FBDB0C", "#5E9F37", "#007cd2", "#333333", "#FF6600", "#FF1CAE", "#ff0000")) +
-  #xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
-  xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
+  xlab("Top Quantile Percentage") + ylab("Recovery Rate") + 
+  #xlab("Bottom Quantile Percentage") + ylab("Recovery Rate") + 
   #scale_y_continuous(limits=c(50, 90)) +
   #scale_x_continuous(limits=c(0, 50)) +
   theme(#legend.position="none",
@@ -430,15 +432,15 @@ x <- pred.cut1 %>%
   select(-Uwi)
 
 # top quartile
-# q.rec0 <- qRecCurv(x) * 100
-# q.rec <- q.rec0[-c(1:12),]  # start from 0.5%
+ q.rec0 <- qRecCurv(x) * 100
+ q.rec <- q.rec0[-c(1:12),]  # start from 0.5%
 # Round to integer percentage
 # index <- ceiling(nrow(q.rec)*seq(0.1, 100, 0.1)/100)
 # q.rec <- q.rec[index, ]
 
 # bottom quartile
-q.rec0 <- qRecCurvBottom(x) * 100
-q.rec <- q.rec0[-c(1:12),]
+#q.rec0 <- qRecCurvBottom(x) * 100
+#q.rec <- q.rec0[-c(1:12),]
 
 q.rec1 <- q.rec %>% select(True) %>% mutate(RecRate=True, Method="1 Baseline")
 q.rec2 <- q.rec %>% select(True, X2) %>% rename(RecRate=X2) %>% mutate(Method="2 11% Training ~ 297 producers, 83 cored wells by 2011-11-01")
@@ -451,8 +453,8 @@ q.rec <- q.rec1 %>% union(q.rec2) %>% union(q.rec3) %>% union(q.rec4)
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#787777", "red", "#5E9F37", "#007cd2")) +
-  #xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
-  xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
+  xlab("Top Quantile Percentage") + ylab("Recovery Rate") + 
+  #xlab("Bottom Quantile Percentage") + ylab("Recovery Rate") + 
   #scale_y_continuous(limits=c(50, 90)) +
   #scale_x_continuous(limits=c(0, 5)) +
   theme(#legend.position="none",
@@ -505,8 +507,8 @@ q.rec <- q.rec1 %>% union(q.rec2) %>% union(q.rec3) %>% union(q.rec4) %>% union(
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#787777", "orange", "#5E9F37", "#007cd2", "red")) +
-  xlab("Top Quantile Percentage") + ylab("Recover Rate") + 
-  #xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
+  xlab("Top Quantile Percentage") + ylab("Recovery Rate") + 
+  #xlab("Bottom Quantile Percentage") + ylab("Recovery Rate") + 
   #scale_y_continuous(limits=c(50, 90)) +
   #scale_x_continuous(limits=c(0, 5)) +
   theme(#legend.position="none",
@@ -832,7 +834,7 @@ plotMLine(dat2,"Cutoff Date for Training Set (Available Producer%)", "Out of Sam
 
 
 
-#@@ Recover rate curve with new chronological data (82 cored wells)
+#@@ Recover rate curve with new chronological data (83 cored wells)
 # RF w/o Loc 
 set.seed(777)
 pred.all <- NULL
@@ -909,9 +911,8 @@ q.rec <- q.rec0 %>% union(q.rec1) %>% union(q.rec2) %>% union(q.rec3) %>%
 ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) + 
   geom_line(lwd=1.2) +
   scale_color_manual(values=c("#787777","#f3f15d", "orange", "#5E9F37", "#a5088d", "#007cd2", "red")) +
-  #xlab("Top Quantile Percentage") + ylab("Out of Sample Recover Rate") + 
-  xlab("Bottom Quantile Percentage") + ylab("Out of Sample Recover Rate") + 
-  #xlab("Bottom Quantile Percentage") + ylab("Recover Rate") + 
+  #xlab("Top Quantile Percentage") + ylab("Out of Sample Recovery Rate") + 
+  xlab("Bottom Quantile Percentage") + ylab("Out of Sample Recovery Rate") + 
   #scale_y_continuous(limits=c(50, 90)) +
   #scale_x_continuous(limits=c(0, 5)) +
   theme(#legend.position="none",

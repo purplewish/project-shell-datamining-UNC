@@ -3,6 +3,7 @@
 options(scipen=999)  # remove scientific notation
 require("sqldf")
 require("ggplot2")
+require('dplyr')
 
 # Set data directory -----------------------------------------------------------------------------------
 path.old <- getwd()
@@ -27,7 +28,8 @@ num.col <- ncol(oil.all)
 
 # Analysis ----------------------------------------------------------------------------------------------
 # Kaggle's model results
-path <- "C:/Apps/projects/DataMiningUNC/data/analysis/"  # analysis path
+#path <- "C:/Apps/projects/DataMiningUNC/data/analysis/"  # analysis path
+path <- "Z:/project/DataMiningUNC/Data/analysis"
 setwd(path)
 
 true <- read.csv("EagleFordRawOilUniq.csv", header=T, as.is=T)  #3494 Note: use aggregate datatab (Prod_IP_Cum_Norm)

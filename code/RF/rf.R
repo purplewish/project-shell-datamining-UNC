@@ -3,6 +3,7 @@
 setwd("Z:/GitHup/project-shell-datamining-UNC/code/RF")
 source("header.R")
 source("loadData.R")
+source("loadChronIHSData3.R")
 source("runRF.R")
 source("plotFuns.R")
 
@@ -546,13 +547,43 @@ corr <- as.matrix(cor(X.ov10))
 #================================================================================================================================
 
 # Production well plot
-dat <- select(all, Longitude, Latitude, Production=Target)
-plotWellProd(dat)
+dat1 <- select(all, Longitude, Latitude, Production=Target)
+plotWellProd(dat1)
 
+# New dataset
+dat2 <- select(all2, Longitude, Latitude, Production=Norm.Lat.12.Month.Liquid)
+plotWellProd(dat2)
+
+# Oil well not in new dataset (Jan's)
+old.uwi <- select(all, Uwi)
+new.uwi <- all2 %>% select(UWI) %>% rename(Uwi=UWI)
+overlap1 <- intersect(old.uwi, new.uwi)  # 1488
+
+a <- read.csv("hori_1545_oilwell_1545_kaggle_oilinput.csv", header=T, as.is=T)
+oil.kaggle <- as.data.frame(a$Uwi)  # 1545 oil well
+names(oil.kaggle) <- "Uwi"
+
+overlap2 <- intersect(overlap1, oil.kaggle)  # 1486
+diff2 <- setdiff(oil.kaggle, overlap1)  # 59 oil well in kaggle but not in new data
+write.csv(diff2, "./missingoilwell_59_innewdat.csv", row.names=F)
+
+all3 <- inner_join(all, diff2, by="Uwi")
+dat3 <- select(all3, Longitude, Latitude, Production=Target)
+  
 
 # Production well + Core plot
 core.loc <- core.loc %>% select(Longitude, Latitude) %>% mutate(ID="core")
-prod.loc <- dat %>% select(Longitude, Latitude) %>% mutate(ID="prod")
-core.prod <- rbind(core.loc, prod.loc)
-plotCoreProd(core.prod)
+prod1.loc <- dat1 %>% select(Longitude, Latitude) %>% mutate(ID="prod")
+prod2.loc <- dat2 %>% select(Longitude, Latitude) %>% mutate(ID="prod")
+prod3.loc <- dat3 %>% select(Longitude, Latitude) %>% mutate(ID="prod")
+core.prod1 <- rbind(prod1.loc, core.loc)
+core.prod2 <- rbind(prod2.loc, core.loc)
+core.prod3 <- rbind(prod3.loc, core.loc)
+plotCoreProd(core.prod1)
+plotCoreProd(core.prod2)
+plotCoreProd(core.prod3)
+
+
+
+
 

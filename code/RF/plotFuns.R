@@ -396,11 +396,13 @@ plotWellProd <- function(dat){
   #   Production well plot with production heatmap
   g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=Production)) + geom_point(size=3) + 
     scale_colour_gradient(low="#56B4E9",  high="red") + 
+    ylim(27.5,31.4) + xlim(-100.5,-96) +
     theme(
       legend.text = element_text(size = 16),
       legend.title = element_text(size = 20),
       axis.title.x = element_text(size=28),
-      axis.title.y = element_text(size=28)
+      axis.title.y = element_text(size=28),
+      legend.justification=c(1,0), legend.position=c(1,0)
     ) 
   
   print(g) 
@@ -418,14 +420,16 @@ plotCoreProd <- function(dat){
   #
   # Returns:
   #    Plot Core + Production Well
-  g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=ID, size=ID)) + geom_point() + 
-    scale_color_manual(name="Dataset", labels = c("Core wells","Production wells"), values=c("red", "grey30")) +
-    scale_size_manual(name="Dataset", labels= c("Core wells","Production wells"), values=c(5, 3)) + 
+  g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=ID, size=ID)) + geom_point(alpha=0.7) + 
+    scale_color_manual(name="Dataset", labels = c("Cored wells","Production wells"), values=c("red", "grey30")) +
+    scale_size_manual(name="Dataset", labels= c("Cored wells","Production wells"), values=c(5, 3)) + 
+    ylim(27.5,31.4) + xlim(-100.5,-96) +
     theme(
       legend.text = element_text(size = 16),
       legend.title = element_text(size = 20),
       axis.title.x = element_text(size=28),
-      axis.title.y = element_text(size=28)
+      axis.title.y = element_text(size=28),
+      legend.justification=c(1,0), legend.position=c(0.95,0)
     ) 
   
   print(g) 

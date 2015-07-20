@@ -1,0 +1,11 @@
+=011_Prod_IPCumNorm.csv
+-Select Norm.1.yr.Oil!='' and Norm.1.yr.Num.of.Mos==12month and Primary.Product='O'
+-Distinct API
+-1678 wells
+-Primary.Product, API, Norm.1.yr.Oil, Norm.1.yr.Num.of.Mos
+
+=012_Prod_Well.csv
+-Select Primary.Product="O" & Horizontal well
+-Distinct API
+-3596 wells
+-Entity  Primary.Product  API Hole.Direction  Surface.Latitude  Surface.Longitude
