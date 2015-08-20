@@ -7,30 +7,33 @@
 #---------------------------------------------------------------------------------------------------------------------
 rm(list=ls())
 options(scipen=999)
-#options(java.parameters = "-Xmx10000m")
-options(java.parameters = "-Xmx100g")
+# options(java.parameters = "-Xmx10000m")
+options(java.parameters = "-Xmx1g")
+
 
 
 #---------------------------------------------------------------------------------------------------------------------
 ### Library
 #---------------------------------------------------------------------------------------------------------------------
-library(randomForest)
-library(ggplot2)
-library(reshape2)
 library(dplyr)
-#library(bartMachine)
-library(cvTools)
-library(grid)
-
-library(grDevices)
-library(splancs)
-library(RColorBrewer)
+library(rgdal)
+library(maps)
+library(geoR)
 library(fields)
-
-
+library(splancs)
+library(ggmap)
+library(ggplot2)
+library(randomForest)
+library(gbm)
+library(nnet)
+library(e1071)
+#library(h2o)
+library(cvTools)
+library(caret)
+library(akima)
+library(stats)
+library(GGally)
 #---------------------------------------------------------------------------------------------------------------------
 ### Project folder path
 #---------------------------------------------------------------------------------------------------------------------
-#repo_path = "C:/Apps/projects/DataMiningUNC"
-repo_path = "Z:/project/DataMiningUNC"
-
+repo_path = "Z:/project"

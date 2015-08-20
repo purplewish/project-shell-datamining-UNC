@@ -319,7 +319,7 @@ plotLine <- function(dat, xlab, ylab){
 #------------------------------------------------------------------------------------------------------
 # Multiple Line Plot 
 #------------------------------------------------------------------------------------------------------
-plotMLine <- function(dat, xlab, ylab){
+plotMLine <- function(dat, xlab, ylab, xlim, ylim){
   # Plot multiple lines 
   #
   # Args:
@@ -328,18 +328,26 @@ plotMLine <- function(dat, xlab, ylab){
   # Returns:
   #   x-y line plot
   a <- names(dat); 
-  g <- ggplot(data=dat, aes_string(x=a[1],y=a[2], colour=a[3], group=a[3])) + ylim(10,75) +
+  g <- ggplot(data=dat, aes_string(x=a[1],y=a[2], colour=a[3], group=a[3])) 
+  
+  if(length(xlim)!=0){
+      g <- g + xlim(xlim[1], xlim[2]) 
+  }
+  if(length(ylim)!=0) {
+      g <- g + ylim(ylim[1], ylim[2])
+  }
+  
     #geom_line(size=1, colour="#000000") + geom_point(size=4) + scale_x_continuous(breaks=seq(1,31,1)) + #ylim(0.5,1) +
-    geom_line(lwd=1.2) + geom_point(size=4) + 
+  g <- g + geom_line(lwd=1.8) + #geom_point(size=4) + 
     #scale_color_manual(values=c("red", "#007cd2","orange", "#5E9F37", "black")) +
     #scale_color_manual(values=c("red", "#007cd2", "#5E9F37", "black")) +
-    scale_color_manual(values=c("red", "#007cd2", "black")) +
+    scale_color_manual(values=c("#cd0000", "#ffcc00")) +
     xlab(xlab) + ylab(ylab) + 
     theme(#legend.position="none",
       axis.title.x = element_text(size=24),
       axis.title.y = element_text(size=24),
       #axis.text.x = element_text(colour="grey20",size=15),
-      axis.text.x = element_text(angle=90, hjust=1, colour='black', size=15),
+      axis.text.x = element_text(angle=0, hjust=0.5, colour='black', size=15),
       axis.text.y = element_text(colour="black",size=15),
       legend.title=element_blank(),
       legend.text = element_text(size = 20),
@@ -394,16 +402,18 @@ plotWellProd <- function(dat){
   #
   # Returns:
   #   Production well plot with production heatmap
-  g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=Production)) + geom_point(size=3) + 
-    scale_colour_gradient(low="#56B4E9",  high="red") + 
-    ylim(27.5,31.4) + xlim(-100.5,-96) +
-    theme(
-      legend.text = element_text(size = 16),
-      legend.title = element_text(size = 20),
-      axis.title.x = element_text(size=28),
-      axis.title.y = element_text(size=28),
-      legend.justification=c(1,0), legend.position=c(1,0)
-    ) 
+  myPaletter <- colorRampPalette(rev(brewer.pal(11, "Spectral")), space="Lab")
+  
+  g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=Production)) + geom_point(size=3, alpha=0.7) + 
+       scale_colour_gradientn(colours = myPaletter(100)) +
+       ylim(27.5,31.4) + xlim(-100.5,-96) +
+       theme(
+          legend.text = element_text(size = 16),
+          legend.title = element_text(size = 20),
+          axis.title.x = element_text(size=28),
+          axis.title.y = element_text(size=28),
+          legend.justification=c(1,0), legend.position=c(1,0)
+       ) 
   
   print(g) 
 }
@@ -434,4 +444,96 @@ plotCoreProd <- function(dat){
   
   print(g) 
 }
+
+
+#------------------------------------------------------------------------------------------------------
+# Heatmap of production with county boundary as backgroud
+#------------------------------------------------------------------------------------------------------
+grid4HeatmapProd <- function(d){
+  # Generate grid points for heatmap of well production within the boundary
+  #
+  # Args:
+  #   d: dataframe use to define heatmap boundary with 2 cols: Longitude Latitude
+  #
+  # Returns:
+  #    Grid points dataframe (Longitude, Latitude) within the boundary 
+
+  # Define boundary through d
+  aq.ch <- chull(d$Longitude, d$Latitude)
+  aq.ch <- c(aq.ch, aq.ch[1])
+  aq.border <- cbind(d$Longitude[aq.ch], d$Latitude[aq.ch])
+  
+  # Generate grid points inside boundary
+  aq.bbox <- sbox(as.points(d$Longitude, d$Latitude))
+  aq.grid <- gridpts(aq.bbox, npts=50000)  # number of point in larger box
+  inside <- inout(aq.grid, aq.border, bound=TRUE)
+  aq.Grid <- aq.grid[inside,]
+  
+  grid <- as.data.frame(aq.Grid)
+  names(grid)<-c('Longitude', 'Latitude')
+  
+  return(grid)
+}
+
+# Nearest Neibor function
+idw <- function(z,distance,k,num.neighs)
+{
+  idw.z<-rep(0,length(distance[,1]))
+  for (i in 1:length(distance[,1]))
+  {
+    d<-sort(distance[i,],index.return=TRUE)
+    w<-1/d$x[1:num.neighs]^k
+    idw.z[i]<-sum(z[d$ix[1:num.neighs]]*w)/sum(w)
+  }
+  return(idw.z)
+}  
+
+
+
+
+plotHeatmapProd <- function(dat, long.range, lat.range, time){
+  # Plot heatmap of well production
+  #
+  # Args:
+  #   d: dataframe use to define heatmap boundary with 2 cols: Longitude Latitude
+  #   dat: dataframe with 3 cols:  Longitude Latitude Production(prediction)
+  #   long.range: vector with long.min and long.max
+  #   lat.range: vector with lat.min and lat.max
+  #
+  # Returns:
+  #    Heatmap of well production with county boundary as backgroud
+  
+  
+  jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+  myPaletter <- colorRampPalette(rev(brewer.pal(11, "Spectral")), space="Lab")
+  
+  # Define county boundary based on long.range and lat.range
+  all_states <- map_data("county")
+  county <- all_states %>% filter(long>long.range[1] & long<long.range[2] & lat>lat.range[1] & lat<lat.range[2])
+  a<-county$subregion
+  county <- subset(all_states,(subregion %in% a)&(region=='texas'))
+
+  # Heatmap
+  g <- ggplot() + geom_polygon(data=county, aes(x=long, y=lat, group=group), colour="#696969", fill="white", size=1) +
+       geom_tile(data=dat, aes(x=Longitude, y=Latitude, z=Production, fill=Production), alpha = 0.8) + 
+       scale_fill_gradientn(colours = myPaletter(100), limits=c(0, 60)) + #scale_alpha_continuous(range=c(0,0.5)) + #scale_y_continuous(expand=c(0,0)) + scale_x_continuous(expand=c(0,0))+
+       annotate(geom="text", x=long.range[1]+2, y=lat.range[2]+0.5, label=time, color= "black", size= 13) +
+       theme_bw() +  theme(line = element_blank(),
+                           panel.border = element_blank(),
+                           axis.text.x = element_blank(),
+                           axis.text.y = element_blank(),
+                           #text = element_blank(),
+                           legend.key.height = unit(2.8, "cm"),
+                           legend.text = element_text(size=12,face = 'bold'),
+                           line = element_blank(),
+                           title = element_blank()) #+
+       #stat_contour(data=dat, aes(x=Longitude, y=Latitude, z=Production))
+  
+  print(g) 
+}
+
+
+
+
+
 

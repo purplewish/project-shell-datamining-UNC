@@ -9,7 +9,7 @@
 setwd("Z:/GitHup/project-shell-datamining-UNC/code/RF")
 
 source("header.R")
-#source("loadData.R")
+source("loadData.R")
 source("runRF.R")
 source("plotFuns.R")
 #source("loadChronIHSData.R")
@@ -925,4 +925,26 @@ ggplot(q.rec, aes(x=True, y=RecRate, colour=Method, group=Method)) +
     legend.justification=c(1,0), legend.position=c(1,0),
     legend.background = element_rect(fill="gray90", size=.5, linetype="dotted")
   )
+
+
+
+#@@ Plot heatmap of production data
+
+dat <- all %>% select(Latitude, Longitude, Target) %>% rename(Production=Target)
+  
+grid <- grid4HeatmapProd(dat[,1:2])
+grid <- cbind(grid, Production=rnorm(nrow(grid)))
+  
+
+plotHeatmapProd(grid, long.range=c(-100.6, -96), lat.range=c(27.6, 30.7))
+
+
+
+
+
+
+
+
+
+
 

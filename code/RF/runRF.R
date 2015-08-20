@@ -329,7 +329,8 @@ runRFReg4 <- function(dat, cutoff, model, m, no.tree, ntrace=500){
   
   # Predict test dataset and calculate mse
   #test.pred <- cbind(test[,c(1,36)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
-  test.pred <- cbind(test[,c(1,42)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
+  #test.pred <- cbind(test[,c(1,42)],Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
+  test.pred <- cbind(test[,c(1,44)], Pred=predict(rf.model, newdata=test))  # Uwi, Target, Pred
   mse <- sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
   
   # Prediction results (combine observed with predict)
