@@ -13,7 +13,7 @@ source("loadData.R")
 source("runRF.R")
 source("plotFuns.R")
 #source("loadChronIHSData.R")
-source("loadChronIHSData2.R")
+#source("loadChronIHSData2.R")
 
 # Results directory
 setwd(file.path(repo_path, "Code/RF/results"))
@@ -115,6 +115,8 @@ sol <- readRDS("sweetspot_5CV_reg_mse.rds")
 # saveRDS(pred, "sweetspot_5CV_reg_pred.rds")
 pred <- readRDS("sweetspot_5CV_reg_pred.rds")
 
+#@@ cross-plot
+plotPredvsAct(pred[,3:2], xlim=c(0,70), ylim=c(0,70), title="Random Forest Predicted vs. Observed")
 
 #@@ Plot Sweetspot
 n.q4 <- ceiling(nrow(pred)*0.25)  # 658
@@ -312,8 +314,8 @@ x <- left_join(pred, pred.6v, by="Uwi")
 x <- left_join(x, pred.kaggle, by="Uwi")
 x <- x[,-1]  # rm Uwi
 
-#q.rec0 <- qRecCurv(x) * 100  # top
-q.rec0 <- qRecCurvBottom(x) *100  # bottom
+q.rec0 <- qRecCurv(x) * 100  # top
+#q.rec0 <- qRecCurvBottom(x) *100  # bottom
 #q.rec <- q.rec0[-c(1:7),]
 # Round to integer percentage
 index <- ceiling(nrow(q.rec0)*seq(0.3,100,0.3)/100)
@@ -940,11 +942,146 @@ plotHeatmapProd(grid, long.range=c(-100.6, -96), lat.range=c(27.6, 30.7))
 
 
 
+#-------------------------------------------------------------------------------------------------------------------------
+### Cross plot (Predict vs. Obs)
+#-------------------------------------------------------------------------------------------------------------------------
+
+#@@ RF full model 5-fold CV
+pred <- readRDS("sweetspot_5CV_reg_pred.rds")
+plotPredvsAct(pred[,3:2], xlim=c(0,70), ylim=c(0,70), title="Random Forest Predicted vs. Observed")
+
+# RF model (6 vars) 5-fold CV
+pred.6v <- readRDS("sweetspot_5CV_reg_6impvars_pred.rds")
+plotPredvsAct(pred.6v[,3:2], xlim=c(0,70), ylim=c(0,70), title="Random Forest (6 Vars) Predicted vs. Observed")
+
+
+pred.kaggle <- select(all, Uwi, Rules.Prediction, Kaggle.Prediction)
+x <- left_join(pred, pred.kaggle, by="Uwi")
+
+# Rule model
+pred.rule <- x[,c(2,6)]
+plotPredvsAct(pred.rule[2:1], xlim=c(0,200), ylim=c(0,200), title="Rule-based Predicted vs. Observed")
+
+# Kaggle model
+pred.kaggle <- x[, c(2,7)]
+plotPredvsAct(pred.kaggle[,2:1], xlim=c(0,70), ylim=c(0,70), title="Kaggle Predicted vs. Observed")
 
 
 
+#@@ 10-fold CV 
+set.seed(777)
+rf <- runRFRegCV(dat=all, model=formula.reg, m=12, no.tree=1000, k=10)
+sol <- rf[[1]]  # CV pred accuracy 
+pred <- rf[[2]]  # CV pred results
+#saveRDS(sol, "sweetspot_10CV_reg_mse.rds")
+#saveRDS(pred, "sweetspot_10CV_reg_pred.rds")
+#sol <- readRDS("sweetspot_10CV_reg_mse.rds")
+pred <- readRDS("sweetspot_10CV_reg_pred.rds")
+plotPredvsAct(pred[,3:2], xlim=c(0,70), ylim=c(0,70), title="Kaggle Predicted vs. Observed")
 
 
 
+#-------------------------------------------------------------------------------------------------------------------------
+### Classification accuracy 
+#-------------------------------------------------------------------------------------------------------------------------
+#@@ Comparison of different model
+# RF full model (31 vars)
+pred <- readRDS("sweetspot_5CV_reg_pred.rds")
+pred <- select(pred, Uwi, Target, RF=Pred)
+
+# RF model (6 vars)
+pred.6v <- readRDS("sweetspot_5CV_reg_6impvars_pred.rds")
+pred.6v <- select(pred.6v, Uwi, RF6v=Pred)
+
+pred.kaggle <- select(all, Uwi, Rules.Prediction, Kaggle.Prediction)
+
+x <- left_join(pred, pred.6v, by="Uwi")
+x <- left_join(x, pred.kaggle, by="Uwi")
+x <- x[,-1]  # rm Uwi
 
 
+q.rec0 <- qRecCurv(x) * 100  # top
+q.rec1 <- qRecCurvBottom(x) * 100 # bot
+
+#@@ top/bot 25% as sweetspot
+q1.acc <- data.frame(
+            method=factor(c("Baseline", "Random Forest", "Random Forest(6V)", "Rule Based", "Kaggle"), 
+                          levels=c("Baseline","Rule Based", "Kaggle", "Random Forest", "Random Forest(6V)") ),
+            #acc=as.numeric(q.rec0[658,]) # top
+            acc=as.numeric(q.rec1[658,]) # bot
+            
+          )
+plotBar(q1.acc, ylim=c(0,80), xlab="", ylab="")
+# compare with baseline
+q1.acc[,2]/q1.acc[1,2]
+
+
+
+#@@ top/bot 10% as sweetspot
+q10pct.acc <- data.frame(
+            method=factor(c("Baseline", "Random Forest", "Random Forest(6V)", "Rule Based", "Kaggle"), 
+                   levels=c("Baseline","Rule Based", "Kaggle", "Random Forest", "Random Forest(6V)") ),
+            #acc=as.numeric(q.rec0[263,]) # top
+            acc=as.numeric(q.rec1[263,]) # bot
+          )
+
+plotBar(q10pct.acc, ylim=c(0,80),xlab="", ylab="")
+# compare with baseline
+q10pct.acc[,2]/q10pct.acc[1,2]  
+  
+#@@ top 30% as sweetspot
+q30pct.acc <- data.frame(
+                method=factor(c("Baseline", "Random Forest", "Random Forest(6V)", "Rule Based", "Kaggle"), 
+                levels=c("Baseline","Rule Based", "Kaggle", "Random Forest", "Random Forest(6V)") ),
+                acc=as.numeric(q.rec0[789,]) # top
+                #acc=as.numeric(q.rec1[789,]) # bot
+)
+
+plotBar(q30pct.acc, ylim=c(0,80),xlab="", ylab="")
+
+# compare with baseline
+q30pct.acc[,2]/q30pct.acc[1,2] 
+
+  
+#@@ top 40% as sweetspot
+q40pct.acc <- data.frame(
+  method=factor(c("Baseline", "Random Forest", "Random Forest(6V)", "Rule Based", "Kaggle"), 
+                levels=c("Baseline","Rule Based", "Kaggle", "Random Forest", "Random Forest(6V)") ),
+  acc=as.numeric(q.rec0[1052,])
+)
+
+plotBar(q40pct.acc, ylim=c(0,85),xlab="", ylab="")
+# compare with baseline
+q40pct.acc[,2]/q40pct.acc[1,2]  
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+### Comparison different training percentage
+#-------------------------------------------------------------------------------------------------------------------------
+#@@ Comparison of different model
+# RF full model (31 vars)
+
+pred <- readRDS("train_pct_reg_pred_cv_6vmodel.rds")  # parsimonial model
+pred.10pct <- pred %>% filter(Train.Perc==0.1) %>% select(Uwi, Target, Pred)
+pred.20pct <- pred %>% filter(Train.Perc==0.2) %>% select(Uwi, Pred)
+pred.80pct <- pred %>% filter(Train.Perc==0.8) %>% select(Uwi, Pred)
+
+x <- pred.10pct %>%
+  left_join(pred.20pct, by="Uwi") %>% rename(pct10=Pred.x) %>% rename(pct20=Pred.y) %>%
+  left_join(pred.80pct, by="Uwi") %>% rename(pct80=Pred) %>%
+  select(-Uwi)
+
+# Top quartile
+q.rec0 <- qRecCurv(x) * 100
+q.rec1 <- qRecCurvBottom(x) * 100
+
+#@@ top/bot 25% as sweetspot
+q1.acc <- data.frame(
+            method=factor(c("Baseline", "10%", "20%", "80%"), 
+                   levels=c("Baseline","10%", "20%", "80%")),
+            #acc=as.numeric(q.rec0[658,]) # top
+            acc=as.numeric(q.rec1[658,]) # bot
+          )
+plotBar(q1.acc, ylim=c(0,80), xlab="", ylab="")
+
+q1.acc[,2]/q1.acc[1,2]

@@ -382,7 +382,8 @@ runRFRegCV <- function(dat, model, m, no.tree, k, rev=FALSE, ntrace=500, default
     #####################################################################################################
     
     # Predict test dataset and calculate mse
-    test.pred <- cbind(test[,c(1,33)], Pred=predict(rf.model,newdata=test), test[,c(38,39)])  # Uwi, Target, Pred, Latitude, Longitude
+    #test.pred <- cbind(test[,c(1,33)], Pred=predict(rf.model,newdata=test), test[,c(38,39)])  # Uwi, Target, Pred, Latitude, Longitude
+    test.pred <- cbind(test[,c("UWI","Norm.Lat.12.Month.Liquid")], Pred=predict(rf.model,newdata=test), test[,c("Latitude","Longitude")])  # Uwi, Target, Pred, Latitude, Longitude
     #mse <- mse + sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred)  # mean square of residuals
     mse <- c(mse, sum((test.pred[,2]-test.pred[,3])^2)/nrow(test.pred))
     pred <- rbind(pred, test.pred)  # save prediction results for fold i

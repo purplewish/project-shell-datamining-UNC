@@ -11,6 +11,7 @@ setwd("Z:/GitHup/project-shell-datamining-UNC/code/RF")
 source("header.R")
 source("runRF.R")
 source("plotFuns.R")
+source("loadData.R")
 source("loadChronIHS1st12monData.R")
 
 # Results directory
@@ -134,13 +135,13 @@ plotMLine(dat,"", "Spearman Correlation", NULL, ylim=c(0.4,0.7))
 dat <- rbind(data.frame(cut=q1.top2[,1], sp=q1.top2[,4], method="Random Forest"), 
              data.frame(cut=q1.top2[,1], sp=q1.top2[,5], method="Kriged")
 )
-plotMLine(dat,"", "Top Quartile Recovery Rate", NULL, c(45, 66))
+plotMLine(dat,"", "Top Quartile Classification Accuracy", NULL, c(45, 66))
 
 #@@bot q1 recovery rate y(34, 60)
 dat <- rbind(data.frame(cut=q1.bot2[,1], sp=q1.bot2[,4], method="Random Forest"), 
              data.frame(cut=q1.bot2[,1], sp=q1.bot2[,5], method="Kriged")
 )
-plotMLine(dat,"", "Bottom Quartile Recovery Rate", NULL, c(34,60))
+plotMLine(dat,"", "Bottom Quartile Classification Accuracy", NULL, c(34,60))
 
 
 
@@ -154,6 +155,7 @@ plotMLine(dat,"", "Bottom Quartile Recovery Rate", NULL, c(34,60))
 grid <- read.csv("grid.csv", as.is=T)
 
 pred <- NULL
+train.well.loc <- NULL
 for (i in c(1,4,7,10,13)){
   
   cut <- as.POSIXlt(as.Date(cut.info$cut.off.date[i]))
@@ -183,25 +185,38 @@ for (i in c(1,4,7,10,13)){
  
   grid.pred <- cbind(grid, Production=nnTarget)
   pred <- c(pred, list(grid.pred))
+
+  train.well.loc <- c(train.well.loc, list(train %>% select(Longitude, Latitude)))
 }
 
 j <- 0
 for (i in c(1,4,7,10,13)){
   j <- j+1
-  plotHeatmapProd(pred[[j]], long.range=c(-100.6, -97), lat.range=c(27.6, 30.3), time=cut.info$cut.off.date[i])
+  plotHeatmapProd(pred[[j]], train.well.loc[[j]], long.range=c(-100.6, -97), lat.range=c(27.6, 30.3), time=cut.info$cut.off.date[i])
 }
 
 # True production
 d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[i])
 d <- d %>% select( Longitude, Latitude, Norm.Lat.12.Month.Liquid) %>% rename(Production=Norm.Lat.12.Month.Liquid)
+well.loc <- d %>% select(Longitude, Latitude)
 
-#plotWellProd(d)
+# plotWellProd(d)
 distmat <- rdist(grid, d[,1:2])
 nnTarget <- idw(d[,3], distmat, 2, 40)
 grid.pred <- cbind(grid, Production=nnTarget)
 
-plotHeatmapProd(grid.pred, long.range=c(-100.6, -97), lat.range=c(27.6, 30.3), time="True Production")
+plotHeatmapProd(grid.pred, well.loc, long.range=c(-100.6, -97), lat.range=c(27.6, 30.3), time="Through Q1 2015")
 
+# True production Q1/Q4 (scatter plot)
+d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[1])
+d <- d %>% select( Longitude, Latitude, Norm.Lat.12.Month.Liquid) %>% rename(Production=Norm.Lat.12.Month.Liquid)
+
+q <- quantile(d$Production, probs = c(0.25, 0.75))
+top.q <- d[d$Production>=q[2],] 
+bot.q <- d[d$Production<=q[1],] 
+
+plotWellProd(top.q) 
+plotWellProd(bot.q) 
 
 
 
@@ -248,7 +263,33 @@ for (i in c(1,4,7,10,13)){
 }
 
 
+#================================================================================================================================
+# Data overview
+#================================================================================================================================
+
+# Production well + Core plot
+core.loc <- core.loc %>% select(Longitude, Latitude) %>% mutate(ID="core")
+d <- chro.dat %>% filter(pct.IHS==cut.info$percentage.IHS.used[1])
+d <- d %>% select( Longitude, Latitude, Norm.Lat.12.Month.Liquid) %>% rename(Production=Norm.Lat.12.Month.Liquid)
+prod.loc <- d %>% select(Longitude, Latitude) %>% mutate(ID="prod")
+
+core.prod <- rbind(prod.loc, core.loc)
+plotCoreProd(core.prod)
+
+# Production well
+plotWellProd(d) 
 
 
+# #================================================================================================================================
+# # 5-fold CV on 7200 producers
+# #================================================================================================================================
+# set.seed(777)
+# rf <- runRFRegCV(dat=all, model=formula.reg.chro.noloc, m=12, no.tree=1000, k=5)
+# sol <- rf[[1]]  # CV pred accuracy 
+# pred <- rf[[2]]  # CV pred results
+# # saveRDS(sol, "sweetspot_5CV_reg_mse.rds")
+# sol <- readRDS("sweetspot_5CV_reg_mse.rds")
+# # saveRDS(pred, "sweetspot_5CV_reg_pred.rds")
+# pred <- readRDS("sweetspot_5CV_reg_pred.rds")
 
 

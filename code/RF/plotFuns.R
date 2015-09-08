@@ -405,7 +405,7 @@ plotWellProd <- function(dat){
   myPaletter <- colorRampPalette(rev(brewer.pal(11, "Spectral")), space="Lab")
   
   g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=Production)) + geom_point(size=3, alpha=0.7) + 
-       scale_colour_gradientn(colours = myPaletter(100)) +
+       scale_colour_gradientn(colours = myPaletter(100), limits=c(0, 60)) +
        ylim(27.5,31.4) + xlim(-100.5,-96) +
        theme(
           legend.text = element_text(size = 16),
@@ -491,7 +491,7 @@ idw <- function(z,distance,k,num.neighs)
 
 
 
-plotHeatmapProd <- function(dat, long.range, lat.range, time){
+plotHeatmapProd <- function(dat, train_well_loc, long.range, lat.range, time){
   # Plot heatmap of well production
   #
   # Args:
@@ -518,6 +518,7 @@ plotHeatmapProd <- function(dat, long.range, lat.range, time){
        geom_tile(data=dat, aes(x=Longitude, y=Latitude, z=Production, fill=Production), alpha = 0.8) + 
        scale_fill_gradientn(colours = myPaletter(100), limits=c(0, 60)) + #scale_alpha_continuous(range=c(0,0.5)) + #scale_y_continuous(expand=c(0,0)) + scale_x_continuous(expand=c(0,0))+
        annotate(geom="text", x=long.range[1]+2, y=lat.range[2]+0.5, label=time, color= "black", size= 13) +
+       #geom_point(data=train_well_loc, aes(x=Longitude, y=Latitude), shape=1, color="#191919", size=2.5) + # add well locations
        theme_bw() +  theme(line = element_blank(),
                            panel.border = element_blank(),
                            axis.text.x = element_blank(),
@@ -534,6 +535,67 @@ plotHeatmapProd <- function(dat, long.range, lat.range, time){
 
 
 
+plotPredvsAct <- function(dat, xlim=NULL, ylim=NULL, title=NULL){
+  ## Plot cross-plot (Predict vs Actual)
+  #
+  # Args:
+  #   dat: a data frame: predict, actual
+  #   xlim: x axis limit e.g. c(0,20)
+  #   ylim: y axis limit e.g. c(0,50)
+  #   title: a string, plot title
+  #
+  # Returns:
+  #   Cross-plot (Predict vs Actual)
+  a <- names(dat) 
+  g <- ggplot(data=dat, aes_string(x=a[2],y=a[1])) + geom_point(alpha=0.7, size=2.5) +
+    geom_abline(intercept=0, size=1, colour='red') + coord_fixed(ratio=1) +
+    xlab('Observed') + ylab('Predicted') +
+    theme(
+      axis.title.x = element_text(size=28),
+      axis.title.y = element_text(size=28),
+      axis.text.x = element_text(colour="grey20",size=24),
+      axis.text.y = element_text(colour="grey20",size=24),
+      plot.title = element_text(lineheight=.8, face="bold", size=32, vjust=2)
+    ) 
+  
+  if(length(xlim)!=0) { g <- g + xlim(xlim[1], xlim[2]) }
+  if(length(ylim)!=0) { g <- g + ylim(ylim[1], ylim[2]) }
+  if(length(title)!=0) { g <- g + ggtitle(title) }
+  
+  print(g)
+}
 
 
+plotBar <- function(dat, ylim=NULL, xlab=NULL, ylab=NULL, title=NULL){
+  ## Plot bar chart
+  #
+  # Args:
+  #   dat: a data frame: category(factor), value(numerical)
+  #   ylim: y axis limit e.g. c(0,50)
+  #   xlab: a string, x axis lab
+  #   ylab: a string, y axis lab
+  #   title: a string, plot title
+  #
+  # Returns:
+  #   Bar chart
+  googPalette <- c("#008744", "#0057e7", "#d62d20", "#ffa700", "#ffa700")
+  
+  a <- names(dat) 
+  g <- ggplot(data=dat, aes_string(x=a[1],y=a[2],fill=a[1])) +
+       geom_bar(stat = "identity") +
+       scale_fill_manual(values=googPalette) + 
+       theme(
+              legend.position="none",
+              axis.title.x = element_text(size=28, face="bold", vjust=-1),
+              axis.title.y = element_text(size=28, face="bold", vjust=1),
+              axis.text.x = element_blank(), #element_text(colour="black",size=32, angle=0),
+              axis.text.y = element_text(colour="black",size=32),
+              plot.title = element_text(lineheight=.8, face="bold", size=32, vjust=2)
+      ) 
 
+  if(length(ylim)!=0) { g <- g + ylim(ylim[1], ylim[2]) }
+  if(length(xlab)!=0) { g <- g + xlab(xlab) }
+  if(length(ylab)!=0) { g <- g + ylab(ylab) }
+  
+  print(g)
+}
