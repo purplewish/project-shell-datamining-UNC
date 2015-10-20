@@ -406,7 +406,7 @@ plotWellProd <- function(dat){
   
   g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=Production)) + geom_point(size=3, alpha=0.7) + 
        scale_colour_gradientn(colours = myPaletter(100), limits=c(0, 60)) +
-       ylim(27.5,31.4) + xlim(-100.5,-96) +
+       #ylim(27.5,31.4) + xlim(-100.5,-96) +
        theme(
           legend.text = element_text(size = 16),
           legend.title = element_text(size = 20),
@@ -431,15 +431,22 @@ plotCoreProd <- function(dat){
   # Returns:
   #    Plot Core + Production Well
   g <- ggplot(dat=dat, aes(x=Longitude, y=Latitude, colour=ID, size=ID)) + geom_point(alpha=0.7) + 
-    scale_color_manual(name="Dataset", labels = c("Cored wells","Production wells"), values=c("red", "grey30")) +
-    scale_size_manual(name="Dataset", labels= c("Cored wells","Production wells"), values=c(5, 3)) + 
+    #scale_color_manual(name="", labels = c("Cored wells","Production wells"), values=c("red", "grey30")) +
+    #scale_size_manual(name="", labels= c("Cored wells","Production wells"), values=c(5, 3)) + 
+    scale_color_manual(labels = c("83 Cored wells","7200 Producers"), values=c("red", "grey30")) +
+    scale_size_manual(labels= c("83 Cored wells","7200 Producers"), values=c(5, 3)) + 
     ylim(27.5,31.4) + xlim(-100.5,-96) +
     theme(
-      legend.text = element_text(size = 16),
-      legend.title = element_text(size = 20),
-      axis.title.x = element_text(size=28),
-      axis.title.y = element_text(size=28),
-      legend.justification=c(1,0), legend.position=c(0.95,0)
+      legend.text = element_text(size = 34, face='bold'),
+      #legend.title = element_text(size = 28),
+      legend.title = element_blank(),
+      axis.title.x = element_text(size=34),
+      axis.title.y = element_text(size=34),
+      axis.text.x = element_text(size=26),
+      axis.text.y = element_text(size=26),
+      legend.key.height=unit(3,"line"),
+      #legend.justification=c(1,0), legend.position=c(0.95,0)
+      legend.justification=c(1,0), legend.position=c(0.33,0.73)
     ) 
   
   print(g) 
@@ -465,7 +472,7 @@ grid4HeatmapProd <- function(d){
   
   # Generate grid points inside boundary
   aq.bbox <- sbox(as.points(d$Longitude, d$Latitude))
-  aq.grid <- gridpts(aq.bbox, npts=50000)  # number of point in larger box
+  aq.grid <- gridpts(aq.bbox, npts=100000)  # number of point in larger box
   inside <- inout(aq.grid, aq.border, bound=TRUE)
   aq.Grid <- aq.grid[inside,]
   
@@ -509,14 +516,18 @@ plotHeatmapProd <- function(dat, train_well_loc, long.range, lat.range, time){
   
   # Define county boundary based on long.range and lat.range
   all_states <- map_data("county")
-  county <- all_states %>% filter(long>long.range[1] & long<long.range[2] & lat>lat.range[1] & lat<lat.range[2])
-  a<-county$subregion
-  county <- subset(all_states,(subregion %in% a)&(region=='texas'))
+  #county <- all_states %>% filter(long>long.range[1] & long<long.range[2] & lat>lat.range[1] & lat<lat.range[2])
+  #a<-county$subregion
+  #county <- subset(all_states,(subregion %in% a)&(region=='texas'))
+  b <- c('pennsylvania', 'ohio', 'west virginia', 'maryland', 'virginia', 'kentucky')
+  #county <- subset(all_states,(subregion %in% a)&(region %in% b))
+  county <- subset(all_states,(region %in% b))
 
+  
   # Heatmap
   g <- ggplot() + geom_polygon(data=county, aes(x=long, y=lat, group=group), colour="#696969", fill="white", size=1) +
        geom_tile(data=dat, aes(x=Longitude, y=Latitude, z=Production, fill=Production), alpha = 0.8) + 
-       scale_fill_gradientn(colours = myPaletter(100), limits=c(0, 60)) + #scale_alpha_continuous(range=c(0,0.5)) + #scale_y_continuous(expand=c(0,0)) + scale_x_continuous(expand=c(0,0))+
+       scale_fill_gradientn(colours = myPaletter(100), limits=c(0, 1000)) + #scale_alpha_continuous(range=c(0,0.5)) + #scale_y_continuous(expand=c(0,0)) + scale_x_continuous(expand=c(0,0))+
        annotate(geom="text", x=long.range[1]+2, y=lat.range[2]+0.5, label=time, color= "black", size= 18) +
        #geom_point(data=train_well_loc, aes(x=Longitude, y=Latitude), shape=1, color="#191919", size=2.5) + # add well locations
        theme_bw() +  theme(line = element_blank(),

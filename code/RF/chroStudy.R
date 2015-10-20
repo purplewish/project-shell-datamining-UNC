@@ -129,13 +129,13 @@ q1.bot3 <- q1.bot[c(1,3,5,7,9,11,13),]
 dat <- rbind(data.frame(cut=sp2[,1], sp=sp2[,4], method="Random Forest"), 
              data.frame(cut=sp2[,1], sp=sp2[,5], method="Kriged")
             )
-plotMLine(dat,"", "Spearman Correlation", NULL, ylim=c(0.4,0.7))
+plotMLine(dat,"", "Spearman Correlation", NULL, ylim=c(0.47,0.7))
 
 #@@top q1 recovery rate y(50, 66)
 dat <- rbind(data.frame(cut=q1.top2[,1], sp=q1.top2[,4], method="Random Forest"), 
              data.frame(cut=q1.top2[,1], sp=q1.top2[,5], method="Kriged")
 )
-plotMLine(dat,"", "Top Quartile Classification Accuracy", NULL, c(45, 66))
+plotMLine(dat,"", "Top Quartile Classification Accuracy", NULL, c(50, 66))
 
 #@@bot q1 recovery rate y(34, 60)
 dat <- rbind(data.frame(cut=q1.bot2[,1], sp=q1.bot2[,4], method="Random Forest"), 
