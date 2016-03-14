@@ -1,4 +1,4 @@
-
+!TEX program = xelatex
 % \VignetteIndexEntry{caret Manual -- Variable Importance}
 % \VignetteDepends{caret}
 % \VignettePackage{caret}
