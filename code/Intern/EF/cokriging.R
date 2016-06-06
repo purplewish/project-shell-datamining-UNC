@@ -5,7 +5,7 @@ library(corrplot)
 library(dplyr)
 library(cvTools)
 library(RandomFields)
-load("docs/index_use.RData")
+load("docs/index.RData")
 dat <- read.csv("data/EF/sumnewdata.csv")
 nr <- nrow(dat)
 
@@ -23,37 +23,6 @@ varname_use <- varname[index_use]
 log_name <- c("S2", "XrdClayChlorite", "XrdClaylllite", "XrdClayKaolinite", "S1", "NormalizedOil", "XrdDolomite")
 index_log <- 1-  names(index_use) %in% log_name
 
-datc <- dat # datc contains log transformation for some variables
-for(i in 1:length(index_use))
-{
-  if(index_log[i] ==0)
-  {
-    datc[,varname[index_use[i]]] <- log(datc[,varname[index_use[i]]])
-  }
-}
-
-datc[abs(datc) == Inf] <- NA
-
-### maps
-
- pdf("docs/figures/maps.pdf")
-
- for(i in 1:length(index_use))
- {
-   print(ggplot(datc,aes_string(x= "longitude",y="latitude",colour = varname[index_use[i]]))+geom_point()+scale_color_gradient2(low ="red", high ="blue",mid = "white", midpoint = median(datc[,varname[index_use[i]]],na.rm = TRUE))+theme_bw())
- }
- dev.off()
-
-#correlation figure
-cormat <- cor(datc[,varname[index_use]],use = "pairwise.complete.obs") # sample correlation matrix
-png("docs/figures/corrplot12.png")
-corrplot(cormat)
-dev.off()
-
-# sort correlation by the absolute value of sample correlation
-name_comb <- unlist(lapply(1:(length(varname_use)-1),function(x){paste(varname_use[x],varname_use[(x+1):length(varname_use)],sep="_")})) # all combination of correlation
-df_cor <- data.frame(name = name_comb, cor = cormat[lower.tri(cormat)]) # combine name and correlation
-df_cor <- arrange(df_cor, desc(abs(cor)))
 
 
 ##### consider Tmax and Romeasured ########
@@ -64,12 +33,13 @@ source("code/cokriging_lmc_mle.R")
 #10-fold cross validation for lmc in gstat and bivariate matern in RandomFields
 #same seed means they use the same split of training data and test data
 
-parm <- expand.grid(c(0.2,0.5,0.8,1,1.5,2),c(50,80,100,150,200))
+param <- expand.grid(c(0.2,0.5,0.8,1,1.5,2),c(50,80,100,150,200))
 
 res_lmc <- matrix(0,nrow(parm),2)
 for(j in 1:nrow(parm))
 {
-  res_lmc[j,] <- cokriging_gstat(dat = dat,variables = c("Tmax","Romeasured"),
+  res_lmc[j,] <- cokriging_gstat(dat = dat,loc_variables = c("longitude","latitude"),
+                                 variables = c("Tmax","Romeasured"),
                                  index_log = c(1,1),
                                  kappa = parm[j,1],range = parm[j,2],
                                  K = 10,seed = 2043)
@@ -85,7 +55,8 @@ num <- expand.grid(seq(0.5,3,by=0.5),seq(0.5,3,by=0.5))
 res_mat <- matrix(0,nrow(num),2)
 for(j in 1:nrow(num))
 {
-  res_mat[j,] <- cokriging_RF(dat = dat, variables = c("Tmax","Romeasured"),
+  res_mat[j,] <- cokriging_RF(dat = dat, loc_variables = c("longitude","latitude"),
+                              variables = c("Tmax","Romeasured"),
                             nu1 = num[j,1],nu2 = num[j,2], index_log = c(1,1),
                               K = 10,seed = 2043)
 }
@@ -98,20 +69,27 @@ write.csv(res_mat,"docs/tabs/res_mat.csv",row.names = FALSE)
 
 
 scalem <- c(50,80,100,150,200)
-res_lmc_mle <- matrix(0, length(scalem),2)
+res_lmc_mle_2comp <- res_lmc_mle_1comp <- matrix(0, length(scalem),2)
 for(j in 1:length(scalem))
 {
-  res_lmc_mle[j,] <- cokriging_lmc_mle(dat,variables  = c("Tmax","Romeasured"), fix.nu = FALSE,
-                                  scale1 = scalem[j], scale2 = scalem[j], index_log = c(1,1),
-                                  lower = c(0,0,-10,-10,0,-10,-10,0),
-                                  upper = c(100,100,100,100,100,100,100,100),
-                                  K = 10,seed = 2043)
+ # # res_lmc_mle_2comp[j,] <- cokriging_lmc_mle(dat,loc_variables = c("longitude","latitude"),
+ #                                       variables  = c("Tmax","Romeasured"), fix.nu = FALSE,
+ #                                  scale1 = scalem[j], scale2 = scalem[j], index_log = c(1,1),
+ #                                  lower = c(0,0,-10,-10,0,-10,-10,0),
+ #                                  upper = c(100,100,100,100,100,100,100,100),
+ #                                  K = 10,seed = 2043)
+  res_lmc_mle_1comp[j,] <- cokriging_lmc_mle(dat,loc_variables = c("longitude","latitude"),
+                                             variables  = c("Tmax","Romeasured"), fix.nu = FALSE,
+                                             scale1 = scalem[j], index_log = c(1,1), ncomp=1,
+                                             lower = c(0,0,-10,-10,0),
+                                             upper = c(100,100,100,100,100),
+                                             K = 10,seed = 2043)
 }
 
 
-rownames(res_lmc_mle) <- scalem
-write.csv(res_lmc_mle,"docs/tabs/res_lmc_mle.csv")
-
+rownames(res_lmc_mle_1comp) <- rownames(res_lmc_mle_1comp) <- scalem
+write.csv(res_lmc_mle_2comp,"docs/tabs/res_lmc_mle_2comp.csv")
+write.csv(res_lmc_mle_2comp,"docs/tabs/res_lmc_mle_1comp.csv")
 
 
 ##### consider S2 and Tmax #### 
@@ -122,7 +100,8 @@ parm <- expand.grid(c(0.2,0.5,0.8,1,1.5,2),c(50,80,100,150,200))
 res_lmc2 <- matrix(0,nrow(parm),2)
 for(j in 1:nrow(parm))
 {
-  res_lmc2[j,] <- cokriging_gstat(dat = dat,variables = c("S2","Tmax"),
+  res_lmc2[j,] <- cokriging_gstat(dat = dat,loc_variables = c("longitude","latitude"),
+                                  variables = c("S2","Tmax"),
                                  index_log = c(0,1),
                                  kappa = parm[j,1],range = parm[j,2],
                                  K = 10,seed = 2043)
@@ -140,7 +119,8 @@ num <- expand.grid(seq(0.5,3,by=0.5),seq(0.5,3,by=0.5))
 res_mat2 <- matrix(0,nrow(num),2)
 for(j in 1:nrow(num))
 {
-  res_mat2[j,] <- cokriging_RF(dat = dat, variables = c("S2","Tmax"),
+  res_mat2[j,] <- cokriging_RF(dat = dat, loc_variables = c("longitude","latitude"),
+                               variables = c("S2","Tmax"),
                               nu1 = num[j,1],nu2 = num[j,2], index_log = c(0,1),
                               K = 10,seed = 2043)
 }
@@ -169,3 +149,21 @@ for(j in 1:length(scalem))
 rownames(res_lmc_mle2) <- scalem
 write.csv(res_lmc_mle2,"docs/tabs/res_lmc_mle2.csv")
 
+
+scalem <- c(30,50,80,100,120,150)
+nu_mle <- c(0.5,1,1.5,2,2.5)
+res_lmc_2_comp <- res_lmc_mle2_1comp <- matrix(0, length(scalem),2)
+for(j in 1:length(scalem))
+{
+   # res_lmc_mle2_2comp[j,] <- cokriging_lmc_mle(dat,loc_variables = c("longitude","latitude"),
+   #                                       variables  = c("S2","Tmax"), fix.nu = FALSE,
+   #                                  scale1 = scalem[j], scale2 = scalem[j], index_log = c(0,1),
+   #                                  lower = c(0,0,-10,-10,0,-10,-10,0),
+   #                                  upper = c(100,100,100,100,100,100,100,100),
+   #                                  K = 10,seed = 2043)
+  res_lmc_mle2_1comp[j,] <- cokriging_lmc_mle(dat,loc_variables = c("longitude","latitude"),
+                                             variables  = c("S2","Tmax"), fix.nu = FALSE, fix.scale = TRUE,   scale1 = scalem[j], index_log = c(0,1), ncomp=1,
+                                             lower = c(0,0,-10,-10,0),
+                                             upper = c(100,100,100,100,100),
+                                             K = 10,seed = 2043)
+}
