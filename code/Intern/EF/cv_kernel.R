@@ -1,5 +1,14 @@
 ######## cross validation for kernel #############
 
+#loc_variables is the variables names for longitude and latitude
+#varname considered variables
+#index_log has the same length of varname, which indicates whether a log transformation is done: 0 means log transform, 1 means original scale
+# method is the method in variog, default is "cressie" here
+#K number of folds, default is 10
+#seed with default value 2043
+#lamv and sigv are tuning parameter values for selection
+#---------------------------------------------------------------
+
 library(dplyr)
 source("code/kernel_est.R")
 toolbox_path = "Z:/XinWang/project/cokriging/code/kernel/Tools - validation toolbox"
@@ -16,7 +25,7 @@ cv_kernel <- function(dat, loc_variables,
   
   nvar <- length(varname)
 
-  dat <- dat[,c("UWI",loc_variables,varname)]
+  dat <- dat[,c(loc_variables,varname)]
   num0 <- colSums(!is.na(dat[,varname]))  # number of nonmissing values for each variable
   
   

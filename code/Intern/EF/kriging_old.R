@@ -1,69 +1,106 @@
-#kriging based on variogram estimation (revised of last year)################-----------------------------------------------------------------
+###########kriging based on variogram estimation (revised of last year)################
+# range parameter is fixed, which is from the estimation of variogram
+#-----------------------------------------------------------------
 #fitpred_old gives predicted values in test_dat based on train_dat
-#kriging_old gives test error in cross validation based on given kappa value, which is used in tuning function to select tuning parameter
+#kriging_old gives test error (RMSE) in cross validation based on given kappa value, which is used in tuning function to select tuning parameter
 #--------------------------------------------------------------------
-# method is the method in variog 
-#K is the number of folds, if K = n, that is leave one out 
-#the default seed is 2403 
+
+#loc_variables is the variables names for longitude and latitude
 #varname: considered variables
 #varname_2nd : variables for trend = "2nd" in last year
 #varname_ord : variables for trend ="cte" in last year
-#index_log has the same length of varname, which indicates whether a log transformation is done: 0 means log transform, 1 means original scale
-# both TRUE, run both last year and this year, otherwise, run this year
-#loc_variables is the variables names for longitude and latitude
+#index_log has the same length of varname, which indicates whether a log transformation is done: 0 means log transform, 1 means original scale, shold have the same order as varname
+# method is the method in variog, default is "cressie" here
+#kappa_vec has the same length with varname, smoothness parameter in Matern model
+#const: maximum distance in variogram is const*maximum distance in data
+
+#K is the number of folds, default is K = 10 
+#the default seed is 2403
 #------------------------------------------------------------------------
 
 fitpred_old <- function(train_dat, test_dat, loc_variables, 
-                        varname, varname_2nd, varname_ord,
-                        method = "cressie", kappa_vec = rep(0.5,length(varname)))
+                        varname, varname_2nd, varname_ord, index_log,
+                        method = "cressie", kappa_vec = rep(0.5,length(varname)),const = 0.64)
   
 {
 
   predmat <- matrix(0,nrow(test_dat),length(varname))
   colnames(predmat) <- varname
   names(kappa_vec) <- varname
-  
-  ##### beginning of the method in last year #####    
+  names(index_log) <- varname
+
   # 2nd order polynomial
   for (i in 1:length(varname_2nd))
   {
     varnamei <- varname_2nd[i]
-    index_obsi <-!is.na(train_dat[,varnamei])
-    d <-  max(dist(train_dat[index_obsi,loc_variables]))*0.64
-    vgi <-variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],trend='2nd',max.dist=d) # 2nd means quadratic term
+    num0 <- sum(train_dat[,varnamei] == 0,na.rm = TRUE)  #number of zeroes
+    # exclude the zero values for variables with log transformation in training data 
+    if(index_log[varnamei] == 0 & num0 >0)
+    {
+      index_obsi <- (!is.na(train_dat[,varnamei])) & ( train_dat[,varnamei] >0)
+    } else{
+      index_obsi <- !is.na(train_dat[,varnamei])
+    }
     
-    covpar<-variofit(vgi,cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],weights = method,fix.kappa = TRUE,kappa = kappa_vec[varnamei]) 
-    # by default, the model is exponential 
+    if(index_log[varnamei] ==0){train_dat[,varnamei] <- log(train_dat[,varnamei])} # log transformation
+    
+
+    d <-  max(dist(train_dat[index_obsi,loc_variables]))*const
+    
+    # fit variogram
+    vgi <-variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],trend='2nd',max.dist=d) # 2nd means quadratic term
+    covpar<-variofit(vgi,cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],weights = method,fix.kappa = TRUE,kappa = kappa_vec[varnamei]) # by default, the model is exponential 
+    
+    
     if(covpar$cov.pars[2]==0) # range parameter if=0 means no dependence
     {covpar$cov.pars[2]=0.001}
-    model <- Krig(x=train_dat[,loc_variables], Y=train_dat[,varnamei],theta=covpar$cov.pars[2],m=3,Covariance="Matern",smoothness=kappa_vec[varnamei]) # range parameter is fixed, other parameters are estimated 
     
-    predmat[,varnamei] <- predict(model,as.matrix(test_dat[,loc_variables]))
+    #Kriging, range (theta) parameter is from covpar object
+    model <- Krig(x=train_dat[index_obsi,loc_variables], Y=train_dat[index_obsi,varnamei],theta=covpar$cov.pars[2],m=3,Covariance="Matern",smoothness=kappa_vec[varnamei]) # range parameter is fixed, other parameters are estimated 
+    pred <- predict(model,as.matrix(test_dat[,loc_variables]))
+    if(index_log[varnamei] ==0){pred <- exp(pred)}
+    predmat[,varnamei] <- pred
   }
   
   # Ordinary
   for (i in 1:length(varname_ord))
   {
     varnamei <- varname_ord[i]
-    index_obsi <-!is.na(train_dat[,varnamei])
-    d <-  max(dist(train_dat[index_obsi,loc_variables]))*0.64
+    num0 <- sum(train_dat[,varnamei] == 0,na.rm = TRUE)
+    # exclude the zero values for variables with log transformation in training data 
+    if(index_log[varnamei] == 0 & num0 >0)
+    {
+      index_obsi <- (!is.na(train_dat[,varnamei])) & ( train_dat[,varnamei] >0)
+    } else{
+      index_obsi <- !is.na(train_dat[,varnamei])
+    }
+    
+    if(index_log[varnamei] ==0){train_dat[,varnamei] <- log(train_dat[,varnamei])}
+    
+    
+    d <-  max(dist(train_dat[index_obsi,loc_variables]))*const
     vgi <-variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],trend='cte',max.dist=d)  # cte=constant
     covpar<-variofit(vgi,cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],weights = method,fix.kappa = TRUE,kappa = kappa_vec[varnamei])
     if(covpar$cov.pars[2]==0)  
     {covpar$cov.pars[2]=0.001}
     
-    model <- Krig(x=train_dat[,loc_variables], Y=train_dat[,varnamei],theta=covpar$cov.pars[2],m=1,Covariance="Matern",smoothness=kappa_vec[varnamei])
-    predmat[,varnamei] <- predict(model,as.matrix(test_dat[,loc_variables]))
+    model <- Krig(x=train_dat[index_obsi,loc_variables], Y=train_dat[index_obsi,varnamei],theta=covpar$cov.pars[2],m=1,Covariance="Matern",smoothness=kappa_vec[varnamei])
+  
+    pred <- predict(model,as.matrix(test_dat[,loc_variables]))
+    if(index_log[varnamei] ==0){pred <- exp(pred)}
+    predmat[,varnamei] <- pred
   }
  
   return(predmat)
 }
   
-  # For given kappa values, gives corresponding test error based on cross validation 
+
+
+# For given kappa values, gives corresponding test error based on cross validation 
 kriging_old <- function(dat, loc_variables,
-                        varname, varname_2nd, varname_ord,
+                        varname, varname_2nd, varname_ord, index_log,
                         method = "cressie", kappa_vec = rep(0.5,length(varname)),
-                        K, seed = 2043)
+                        K, seed = 2043, const = 0.64)
 {
   set.seed(seed)
   # construct K-folds data 
@@ -81,9 +118,10 @@ kriging_old <- function(dat, loc_variables,
       test_dat  <- dat[cv_group$subsets[cv_group$which==k],]
       train_dat <- dplyr::setdiff(dat, test_dat)
       
+      # prediction on test data 
       predk <- fitpred_old(train_dat, test_dat, loc_variables = loc_variables, varname = varname,
-                            varname_2nd = varname_2nd, varname_ord = varname_ord,
-                            method = method, kappa_vec = kappa_vec)
+                            varname_2nd = varname_2nd, varname_ord = varname_ord, index_log = index_log,
+                            method = method, kappa_vec = kappa_vec, const = const)
       
       test_error0 <- test_error0 + colSums((predk - test_dat[,varname])^2,na.rm = TRUE)/miss_inf
     }

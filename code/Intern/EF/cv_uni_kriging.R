@@ -1,27 +1,34 @@
 ########################## in variogram based and mle based univariate kriging method, the smoothness parameter is fixed, which can be viewed as tuning parameter #######
-# tuning_kriging function can select tuning parameter based on cross validation ####
-# cv_kriging function to calculate test error based on selected tuning parameter in train data
+# tuning_kriging function selects tuning parameter based on cross validation ####
+# cv_kriging function  calculates test error based on selected tuning parameter in train data
+# index_log_old is the log transformation indicator for last year method
+# index_log_new is the log transfromation indicator for this year
 #----------------------------------------------------------------------------------------
 
 source("code/kriging_old.R")
 source("code/kriging_new.R")
 
 tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
-                           loc_variables,varname, varname_2nd, varname_ord, index_log,method = "cressie",
-                           K, seed = 2043)
+                           loc_variables,varname, varname_2nd, varname_ord, 
+                           index_log_old, index_log_new, method = "cressie",
+                           K, seed = 2043, const = 0.64)
 {
 
   tab0 <- data.frame(kappa = rep(kappav,each = length(varname)),variable = rep(varname,length(kappav)),rmse = 0)
-           
+
+  
+  # For each kappav value, RMSE is calucalted 
   if(algorithm  == "old")
   {  
   for(m in 1:length(kappav))
   {
     tab0[tab0$kappa == kappav[m],3] <-  kriging_old(dat = dat,loc_variables = loc_variables,
                                                     varname = varname,varname_2nd = varname_2nd, 
-                                                    varname_ord = varname_ord, method = method,
+                                                    varname_ord = varname_ord,  
+                                                    index_log = index_log_old,  method = method,
                                                     kappa_vec = rep(kappav[m],length(varname)), 
-                                                    K = K, seed = seed)
+                                                    K = K, seed = seed, const = const)
+    print(kappav[m])
   }
   }
   
@@ -30,11 +37,11 @@ tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
     for(m in 1:length(kappav))
     {
       tab0[tab0$kappa == kappav[m],3] <-  kriging_new(dat = dat,loc_variables = loc_variables,
-                                                      varname = varname,index_log = index_log,
+                                                      varname = varname,index_log = index_log_new,
                                                       method = method,
                                                       kappa_vec = rep(kappav[m],length(varname)), 
-                                                      K = K,seed = seed)
- 
+                                                      K = K,seed = seed, const = const)
+    print(kappav[m])
     }
   }
   
@@ -48,16 +55,16 @@ tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
 
 #cross validation, in each training data, tuning parameters are selcted and then do prediction in test data 
 cv_kriging <- function(dat, loc_variables,
-                       varname, varname_2nd, varname_ord, index_log,
+                       varname, varname_2nd, varname_ord, index_log_old, index_log_new,
                        method = "cressie", kappav = seq(0.2,2.5,0.3),
-                       K = 10, seed = 2043)
+                       K = 10, seed = 2043, const = 0.64)
 {
   nvar <- length(varname)
   
-  dat <- dat[,c("UWI",loc_variables,varname)]
+  dat <- dat[,c(loc_variables,varname)]
   num0_all <- colSums(!is.na(dat[,varname]))   # number of nonmissing values for each varaible
   
-  # 0 for old 1 for new 
+  # 0 for last year 1 (old) for this year (new)
   test_error0 <- test_error1 <- rep(0,nvar) #output
   names(test_error0) <- names(test_error1) <- varname
   
@@ -74,23 +81,24 @@ cv_kriging <- function(dat, loc_variables,
     # select tuning parameter based on training data
     kappa_old <- tuning_kriging(train_dat, algorithm = "old",kappav = kappav,
                     loc_variables = loc_variables,
-                    varname = varname, varname_2nd, varname_ord = varname_ord, 
-					          index_log = index_log,method = method,
-                    K = K, seed = seed)
+                    varname = varname, varname_2nd = varname_2nd, varname_ord = varname_ord, 
+					          index_log_old = index_log_old, index_log_new = index_log_new,
+					          method = method,
+                    K = K, seed = seed, const = const)
     kappa_new <- tuning_kriging(train_dat, algorithm = "new",kappav = kappav,
                     loc_variables = loc_variables,
-                    varname = varname, varname_2nd, varname_ord = varname_ord, 
-					          index_log = index_log,method = method,
-                    K = K, seed = seed)
+                    varname = varname, varname_2nd = varname_2nd, varname_ord = varname_ord, 
+					          index_log_old = index_log_old, index_log_new = index_log_new, method = method,
+                    K = K, seed = seed, const = const)
     
     # prediction on test data
     pred0k <- fitpred_old(train_dat,test_dat,loc_variables = loc_variables,
                          varname = varname,varname_2nd = varname_2nd, varname_ord = varname_ord,
-                         method = method,kappa_vec = kappa_old)
+                         index_log = index_log_old,method = method,kappa_vec = kappa_old, const = const)
    
     pred1k <- fitpred_new(train_dat, test_dat, loc_variables = loc_variables, 
-                          varname = varname, index_log = index_log,
-                          method = method, kappa_vec = kappa_new)
+                          varname = varname, index_log = index_log_new,
+                          method = method, kappa_vec = kappa_new, const = const)
     
     test_error0 <- test_error0 + colSums((pred0k - test_dat[,varname])^2, na.rm = TRUE)/num0_all
     test_error1 <- test_error1 + colSums((pred1k - test_dat[,varname])^2, na.rm = TRUE)/num0_all

@@ -1,29 +1,35 @@
 
-#kriging based on mle estimation ################-----------------------------------------------------------------
+#######kriging this year ################
+# nugget effect is from varigram estimation, constant mean for all variables 
+
+#--------------------------------------------------------------------
 ##fitpred_new gives predicted values in test_dat based on train_dat
-#kriging_new gives test error in cross validation based on given kappa value, which is used in tuning function to select tuning parameter
+#kriging_new gives test error (RMSE) in cross validation based on given kappa value, which is used in tuning function to select tuning parameter
 #---------------------------------------------------------------------
-# method is the method in variog 
-#K is the number of folds, if K = n, that is leave one out 
-#the default seed is 2403 
-#varname: considered variables
-#index_log has the same length of varname, which indicates whether a log transformation is done: 0 means log transform, 1 means original scale
-# both TRUE, run both last year and this year, otherwise, run this year
+
 #loc_variables is the variables names for longitude and latitude
 #varname considered variables
+#index_log has the same length of varname, which indicates whether a log transformation is done: 0 means log transform, 1 means original scale
+# method is the method in variog, default is "cressie" here
+#kappa_vec has the same length with varname, smoothness parameter in Matern model
+#const: maximum distance in variogram is const*maximum distance in data 
+
+
+#K is the number of folds, default is K = 10 
+#the default seed is 2403 
 #--------------------------------------------------------------------------
 
 
 
 fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log,
-                        method = "cressie", kappa_vec = rep(0.5,length(varname)))
+                        method = "cressie", kappa_vec = rep(0.5,length(varname)), const = 0.64)
 {
-  nvar <- length(varname)
+  
+  nvar <- length(varname) 
   predmat <- matrix(0,nrow(test_dat),nvar)
   colnames(predmat) <- varname
   
   
-  ####beginning of method for this year ####  
   for(i in 1:nvar)
   {
     varnamei <- varname[i]
@@ -37,11 +43,13 @@ fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log,
     }
     
     maxdist <-  max(dist(train_dat[index_obsi,loc_variables]))
+ 
     
-    vgi <- variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],max.dist=maxdist*0.64, lambda = index_log[i])
+    # fit variogram
+    vgi <- variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],max.dist=maxdist*const, lambda = index_log[i])
+    fit.vg <- variofit(vgi, cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],fix.kappa = TRUE,kappa = kappa_vec[i],weights = method) 
     
-    fit.vg <- variofit(vgi, cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],fix.kappa = TRUE,kappa = kappa_vec[i],
-                       weights = method) 
+    # nugget should be non-negative
     if(fit.vg$nugget < 0)
     {
       fit.vg$nugget <- 0
@@ -61,7 +69,7 @@ fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log,
 kriging_new <- function(dat, loc_variables,
                         varname, index_log,
                         method = "cressie", kappa_vec = rep(0.5,length(varname)),
-                      K, seed = 2043)
+                        K, seed = 2043, const = 0.64)
 {
   set.seed(seed)
    # construct K-folds data 
@@ -83,7 +91,7 @@ kriging_new <- function(dat, loc_variables,
     ## predicted results on test  data
     predk <- fitpred_new(train_dat, test_dat, loc_variables = loc_variables,
                          varname = varname, index_log = index_log,
-                         method = method, kappa_vec = kappa_vec)
+                         method = method, kappa_vec = kappa_vec, const = const)
     
     test_error1 <- test_error1 + colSums((predk - test_dat[,varname])^2,na.rm = TRUE)/miss_inf
   }

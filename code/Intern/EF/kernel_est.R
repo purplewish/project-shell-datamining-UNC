@@ -25,7 +25,9 @@ fit_kernel  <- function(x, y, params = NULL){
     
     return(list(xtrain = x, beta = beta, targetnames = names(y)))
     
-  }
+}
+
+
 predict_kernel <- function(modelFit, newdata, params = NULL){
     
     # read in parameters
