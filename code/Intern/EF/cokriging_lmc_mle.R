@@ -39,13 +39,19 @@ fitpred_lmc_mle <- function(train_dat, test_dat,loc_variables,variables, ncomp =
   #two components
   if(ncomp ==2 )
   {
-    if(fix.nu)
+    if(fix.nu & fix.scale)
+    {
+      pars.model <- nug + RMmatrix(M = c(NA,NA),RMwhittle(nu = nu1, scale = scale1))+
+        RMatrix(M = c(NA, NA), RMwhittle(nu = nu2, scale = scale2))
+    }
+    
+    if(fix.nu & (!fix.scale))
     {
       pars.model  <- nug + RMmatrix(M = c(NA,NA), RMwhittle(nu = nu1, scale = NA))+
         RMmatrix(M = c(NA,NA), RMwhittle(nu = nu2, scale = NA))
     }
     
-    if(fix.scale)
+    if(fix.scale & (!fix.nu))
     {
       pars.model  <- nug + RMmatrix(M = c(NA,NA), RMwhittle(nu = NA, scale = scale1))+
         RMmatrix(M = c(NA,NA), RMwhittle(nu = NA, scale = scale2))
@@ -60,12 +66,16 @@ fitpred_lmc_mle <- function(train_dat, test_dat,loc_variables,variables, ncomp =
   #one componet
   if(ncomp==1)
   {
-    if(fix.nu)
+    if(fix.nu & fix.scale)
+    {
+      pars.model <- nug + RMmatrix(M = c(NA,NA),RMwhittle(nu = nu1, scale = scale1))
+    }
+    if(fix.nu & (!fix.scale))
     {
       pars.model  <- nug + RMmatrix(M = c(NA,NA), RMwhittle(nu = nu1, scale = NA))
     }
     
-    if(fix.scale)
+    if(fix.scale & (!fix.nu))
     {
       pars.model  <- nug + RMmatrix(M = c(NA,NA), RMwhittle(nu = NA, scale = scale1))
     }
@@ -93,8 +103,7 @@ fitpred_lmc_mle <- function(train_dat, test_dat,loc_variables,variables, ncomp =
   indexk <- (!is.na(train_dat[,variables[1]]))&(!is.na(train_dat[,variables[2]])) # nonmissing index
   
   #fit lmc with given model structure
-  resk <- RFfit(pars.model, x= train_dat[indexk,loc_variables[1]], y = train_dat[indexk,loc_variables[2]], 
-                data = train_dat[indexk,variables],split = FALSE,lower = lower, upper = upper)
+  resk <- RFfit(pars.model, x= train_dat[indexk,loc_variables[1]], y = train_dat[indexk,loc_variables[2]], data = train_dat[indexk,variables],split = FALSE,lower = lower, upper = upper)
   
   pred_mat <- RFinterpolate(resk, x= as.numeric(test_dat[,loc_variables[1]]),y = as.numeric(test_dat[,loc_variables[2]]), data = train_dat[indexk,variables], given = cbind(x = train_dat[indexk,loc_variables[1]],y=train_dat[indexk,loc_variables[2]])) #prediction
   
@@ -146,7 +155,7 @@ cokriging_lmc_mle <- function(dat,loc_variables,variables, ncomp = 2,
 }
 
 
-
+# ------- for scale one tuning parameter -------------------------------------------------
 #### this is a function tuning for scale , which means nu parameter is estimated, default for 1 component
 tuning_lmc_mle <- function(dat,loc_variables,variables, ncomp = 1,
                             fix.nu = FALSE, fix.scale = TRUE,scale_vec, index_log = c(1,1),
@@ -203,5 +212,65 @@ cv_lmc_mle <- function(dat,loc_variables,variables, ncomp = 1,
   return(test_error_lmc_mle)
 }
 
+#--------------------------------------------------------------------------------------------
 
-print(c("fitpred_lmc_mle","cokriging_lmc_mle","tuning_lmc_mle","cv_lmc_mle"))
+
+##### both nu and scale are given and one component #######################################
+tuning_lmc_mle2 <- function(dat,loc_variables,variables, ncomp = 1,
+                           fix.nu = TRUE, fix.scale = TRUE,param, index_log = c(1,1),
+                           lower = NULL, upper = NULL,
+                           K,seed = 2043)
+{
+  res_lmc_mle <- matrix(0, nrow(param),2)
+  # for each scale parameterm calculate test RMSE
+  for(j in 1:nrow(param))
+  {
+    res_lmc_mle[j,] <- cokriging_lmc_mle(dat,loc_variables = loc_variables, ncomp = ncomp,
+                                         variables  = variables, fix.nu = fix.nu,
+                                         fix.scale = fix.scale, nu1= param[j,1], nu2 = param[j,1],
+                                         scale1 = param[j,2], scale2 = param[j,2],
+                                         index_log = index_log,
+                                         lower = lower, upper = upper, K = K,seed = seed)
+  }
+  
+  mean_vec <- colMeans(dat[,variables],na.rm = TRUE)
+  index_min <- which.min(rowSums(sweep(res_lmc_mle, 2, mean_vec,FUN = "/"))) # relative min : RMSE/mean
+  par_select <- param[index_min,] # selected tuning parameter
+  return(par_select)
+  
+}
+
+
+cv_lmc_mle2 <- function(dat,loc_variables,variables, ncomp = 1,
+                       fix.nu = TRUE, fix.scale = TRUE,param, index_log = c(1,1),
+                       lower = c(0,0,-100,-100), upper = c(100,100,100,100),
+                       K,seed = 2043)
+{
+  set.seed(seed)
+  nv <- length(variables)
+  cv_group <- cvFolds(n = nrow(dat),K = K,type = "random")
+  test_error_lmc_mle <-  rep(0,nv) #output
+  num_obs <- colSums(!is.na(dat[,variables])) 
+  
+  for(k in 1:K)
+  {
+    test_dat  <- dat[cv_group$subsets[cv_group$which==k],]
+    train_dat <- dat[cv_group$subsets[cv_group$which!=k],]
+    
+    par_select <- tuning_lmc_mle2(train_dat, loc_variables = loc_variables, variables = variables, param = param, index_log = index_log, K = K ,seed = seed, lower = lower, upper = upper) # selected tuning parameter
+    
+    par_select <- as.numeric(scale_select)
+    
+    pred <- fitpred_lmc_mle(train_dat, test_dat,loc_variables,variables, ncomp = ncomp,
+                            fix.nu = fix.nu, fix.scale = fix.scale,
+                            nu1 = par_select[1], nu2 = par_select[2],
+                            scale1 = par_select[2], scale2 = par_select[2], 
+                            index_log = index_log,lower = lower, upper = upper) # prediction on test data 
+    
+    test_error_lmc_mle <- test_error_lmc_mle + colSums((test_dat[,variables] - pred)^2,na.rm = TRUE)/num_obs
+  }
+  test_error_lmc_mle <- sqrt(test_error_lmc_mle)
+  return(test_error_lmc_mle)
+}
+
+print(c("fitpred_lmc_mle","cokriging_lmc_mle","tuning_lmc_mle","cv_lmc_mle","tuning_lmc_mle2","cv_lmc_mle2"))
