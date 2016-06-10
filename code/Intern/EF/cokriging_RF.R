@@ -12,6 +12,7 @@
 #K number of folds, default is 10
 #seed with default value 2043
 #index_log: 0 for log transformation, 1 for not
+# scale.same: whether assume same scale parameter in the model
 #-------------------------------------------------------
 
 library(RandomFields)
@@ -19,14 +20,21 @@ library(dplyr)
 
 
 fitpred_RF <- function(train_dat, test_dat, loc_variables, variables,
-                       nu1 = 0.5, nu2 = 0.5, index_log = c(1,1))
+                       nu1 = 0.5, nu2 = 0.5, scale.same = TRUE,index_log = c(1,1))
 {
   nv <- length(variables)
 
   # parsimonious multivariate matern model with fixed kappa value 
   nug <- RMmatrix(M = matrix(nc = 2, c(NA, 0, 0, NA)), RMnugget())
-  pars.model <- nug + RMbiwm(nudiag = c(nu1, nu2), scale = NA,
-                             cdiag = c(NA, NA), rhored = NA)
+  
+  if(scale.same)
+  {
+    pars.model <- nug + RMbiwm(nudiag = c(nu1, nu2), scale = NA,
+                               cdiag = c(NA, NA), rhored = NA)
+  }else{
+  pars.model <- nug + RMbiwm(nudiag = c(nu1, nu2), nured = 1, s= rep(NA,3),
+                              cdiag = c(NA, NA), rhored = NA)
+  }
   
   #log transformation for training data
   for(idi in 1:nv)
@@ -64,7 +72,7 @@ fitpred_RF <- function(train_dat, test_dat, loc_variables, variables,
 
 
 cokriging_RF <- function(dat,loc_variables,variables, nu1 =0.5,nu2=0.5,
-                            index_log = c(1,1),
+                            scale.same = TRUE, index_log = c(1,1),
                             K,seed = 2043)
 {
 
@@ -82,7 +90,7 @@ cokriging_RF <- function(dat,loc_variables,variables, nu1 =0.5,nu2=0.5,
     train_dat <- sub_dat0[cv_group$subsets[cv_group$which!=k],]
     
     pred <- fitpred_RF(train_dat, test_dat, loc_variables = loc_variables, variables = variables,
-                       nu1 = nu1, nu2 = nu2, index_log = index_log) # prediction on test data
+                       nu1 = nu1, nu2 = nu2, scale.same = scale.same, index_log = index_log) # prediction on test data
   
     test_error_mat <- test_error_mat + colSums((test_dat[,variables] - pred)^2,na.rm = TRUE)/num_obs
   }
@@ -93,14 +101,15 @@ cokriging_RF <- function(dat,loc_variables,variables, nu1 =0.5,nu2=0.5,
 
 
 # tuning parameter selection
-tuning_RF <- function(dat, loc_variables, variables, numat, index_log, K ,seed)
+tuning_RF <- function(dat, loc_variables, variables, numat, scale.same, index_log, K ,seed)
 {
   res_mat <- matrix(0,nrow(numat),2)
   for(j in 1:nrow(numat))
   {
     res_mat[j,] <- cokriging_RF(dat = dat, loc_variables = loc_variables,
                                 variables  = variables,
-                                nu1 = numat[j,1],nu2 = numat[j,2], index_log = index_log,
+                                nu1 = numat[j,1],nu2 = numat[j,2], scale.same = scale.same,
+                                index_log = index_log,
                                 K = K, seed = seed)
   }
   
@@ -112,7 +121,7 @@ tuning_RF <- function(dat, loc_variables, variables, numat, index_log, K ,seed)
 }
 
 
-cv_RF <- function(dat, loc_variables, variables, numat, index_log, K ,seed)
+cv_RF <- function(dat, loc_variables, variables, numat, scale.same, index_log, K ,seed)
 {
   set.seed(seed)
   nv <- length(variables)
@@ -126,9 +135,9 @@ cv_RF <- function(dat, loc_variables, variables, numat, index_log, K ,seed)
     train_dat <- dat[cv_group$subsets[cv_group$which!=k],]
     
     nu_select <- tuning_RF(train_dat, loc_variables = loc_variables, variables = variables, 
-	                numat = numat, index_log = index_log, K = K ,seed = seed) # selected tuning parameter
+	                numat = numat, scale.same = scale.same, index_log = index_log, K = K ,seed = seed) # selected tuning parameter
     
-    pred <- fitpred_RF(train_dat, test_dat, loc_variables = loc_variables, variables = variables, nu1 = as.numeric(nu_select[1]), nu2 = as.numeric(nu_select[2]), index_log = index_log) # prediction on test data
+    pred <- fitpred_RF(train_dat, test_dat, loc_variables = loc_variables, variables = variables, nu1 = as.numeric(nu_select[1]), nu2 = as.numeric(nu_select[2]), scale.same = scale.same,index_log = index_log) # prediction on test data
     
     test_error_mat <- test_error_mat + colSums((test_dat[,variables] - pred)^2,na.rm = TRUE)/num_obs
   }
