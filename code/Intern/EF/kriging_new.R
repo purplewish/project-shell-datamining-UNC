@@ -19,7 +19,7 @@
 #the default seed is 2403 
 #--------------------------------------------------------------------------
 
-
+library(geoR)
 
 fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log,
                         method = "cressie", kappa_vec = rep(0.5,length(varname)), const = 0.64)

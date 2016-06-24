@@ -9,6 +9,7 @@
 # they can be separately used in tuning_kriging_old, cv_kriging_old, tuning_kriging_new and cv_kriging_new
 source("code/kriging_old.R")
 source("code/kriging_new.R")
+library(cvTools)
 
 tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
                            loc_variables,varname, varname_2nd, varname_ord, 

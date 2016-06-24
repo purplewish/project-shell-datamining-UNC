@@ -6,8 +6,8 @@
 # cv_RF gives the test RMSE based on selected tuning parameter 
 #-------------------------------------------------------------------------------------
 #dat is dataframe with locations and variables 
-##loc_variables, variables for location
-# variables: the variables in cokriging, here just two variables
+#loc_variables, variables for location
+#variables: the variables in cokriging, here just two variables
 #nu: value in matern model, default value is 0.5, which is exponential
 #K number of folds, default is 10
 #seed with default value 2043

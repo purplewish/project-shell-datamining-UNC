@@ -17,7 +17,8 @@
 #K is the number of folds, default is K = 10 
 #the default seed is 2403
 #------------------------------------------------------------------------
-
+library(geoR)
+library(fields)
 fitpred_old <- function(train_dat, test_dat, loc_variables, 
                         varname, varname_2nd, varname_ord, index_log,
                         method = "cressie", kappa_vec = rep(0.5,length(varname)),const = 0.64)
