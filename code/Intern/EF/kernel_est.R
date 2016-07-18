@@ -1,5 +1,6 @@
 ########## prediction based on the results of kernel estimation ###################
 #modelFit is the function
+# fitpred_kernel: a function fit the model and do prediction based on selected tuning parameters
 library(kernlab)
 library(MASS)
 
@@ -61,5 +62,39 @@ predict_kernel <- function(modelFit, newdata, params = NULL){
     
 }
 
+fitpred_kernel <- function(data, newdata, varname, loc_variables, K=10, seed = 2043)
+{
+  sd0 <- apply(data[,varname],2,function(x)(sd(x,na.rm = TRUE)))  # standard deviation 
+  mean0 <- colMeans(data[,varname],na.rm = TRUE) # mean 
+  nvar <- length(varname)
+  
+  dat0 <- data
+  dat0[,varname] <- scale(dat0[,varname])   
+  
+  #cross validation to select lambda and sigma 
+  foldSetup <- initFolds(foldType = "kfold", seed = seed, foldParams = list(k = K))
+  dataFolds <- sampleFolds(nrow(data), foldSetup)
+  
+  # select best lambda and sigma
+  tuningErrors <- tuning.computeErrors(dat0, dataFolds, predictor.gaussreg, gaussParamGrid ,
+                                       target = varname, covariates = loc_variables,use_foreach = FALSE)
+  
+  paraselect <- tuning.getBestParams(tuningErrors, gaussParamGrid)
+  
+  pred_kernel <- matrix(0,nrow(newdata),nvar)
+  colnames(pred_kernel) <- varname
+  
+  for(j in 1:nvar)
+  {
+    varj <- varname[j]
+    indexj <- !is.na(data[,varj])
+    fitmodel <- fit_kernel(x = dat0[indexj,loc_variables],y = dat0[indexj,varj],params = paraselect[[varj]])
+    predj <- predict_kernel(modelFit = fitmodel,newdata = newdata[,loc_variables],params = paraselect[[varj]])
+    predj <- predj*sd0[j] + mean0[j]
+    pred_kernel[,varj] <- predj[,1]
+  }
+  return(pred_kernel)
+  
+}
 
-print(c("fit_kernel","predict_kernel"))
+print(c("fit_kernel","predict_kernel","fitpred_kernel"))

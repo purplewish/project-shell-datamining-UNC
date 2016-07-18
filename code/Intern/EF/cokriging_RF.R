@@ -17,7 +17,7 @@
 
 library(RandomFields)
 library(dplyr)
-
+library(cvTools)
 
 fitpred_RF <- function(train_dat, test_dat, loc_variables, variables,
                        nu1 = 0.5, nu2 = 0.5, scale.same = TRUE,index_log = c(1,1))
@@ -54,9 +54,12 @@ fitpred_RF <- function(train_dat, test_dat, loc_variables, variables,
   indexk <- (!is.na(train_dat[,variables[1]]))&(!is.na(train_dat[,variables[2]])) # nonmissing index
   
   #fit parsimonious multivariate matern model with fixed kappa value 
-  resk <- RFfit(pars.model, x= train_dat[indexk,loc_variables[1]], y = train_dat[indexk,loc_variables[2]], data = train_dat[indexk,variables],split = FALSE)
+  resk <- RFfit(pars.model, x= train_dat[indexk,loc_variables[1]], y = train_dat[indexk,loc_variables[2]],
+                data = train_dat[indexk,variables],split = FALSE)
   
-  pred_mat <- RFinterpolate(resk, x= as.numeric(test_dat[,loc_variables[1]]),y = as.numeric(test_dat[,loc_variables[2]]), data = train_dat[indexk,variables], given = cbind(x = train_dat[indexk,loc_variables[1]],y=train_dat[indexk,loc_variables[2]])) # prediction
+  pred_mat <- RFinterpolate(resk, x= as.numeric(test_dat[,loc_variables[1]]),y = as.numeric(test_dat[,loc_variables[2]]), 
+                            data = train_dat[indexk,variables], 
+                            given = cbind(x = train_dat[indexk,loc_variables[1]],y=train_dat[indexk,loc_variables[2]])) # prediction
   
   # transform back
   pred <- pred_mat@data

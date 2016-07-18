@@ -26,7 +26,7 @@ cv_kernel <- function(dat, loc_variables,
   nvar <- length(varname)
 
   dat <- dat[,c(loc_variables,varname)]
-  num0 <- colSums(!is.na(dat[,varname]))  # number of nonmissing values for each variable
+  num0 <- colSums(!is.na(dat[,varname,drop = FALSE]))  # number of nonmissing values for each variable
   
   
   test_error <- rep(0,nvar) #output
@@ -51,8 +51,8 @@ cv_kernel <- function(dat, loc_variables,
     }
    
     
-    sd0 <- apply(train_dat[,varname],2,function(x)(sd(x,na.rm = TRUE)))  # standard deviation 
-    mean0 <- colMeans(train_dat[,varname],na.rm = TRUE) # mean 
+    sd0 <- apply(train_dat[,varname, drop = FALSE],2,function(x)(sd(x,na.rm = TRUE)))  # standard deviation 
+    mean0 <- colMeans(train_dat[,varname, drop = FALSE],na.rm = TRUE) # mean 
     
     train_dat[,varname] <- scale(train_dat[,varname])   
     
@@ -90,3 +90,4 @@ cv_kernel <- function(dat, loc_variables,
   test_error <- sqrt(test_error)
   return(test_error)
 }
+

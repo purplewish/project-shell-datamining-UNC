@@ -2,7 +2,7 @@
 ### ------------------------cokriging based on fit.lmc in gstat package------- #####
 #fitpred_lmc_vg fits model in train_dat predicts in test data
 # cokriging_lmc_vg cross validation for given nu values 
-# tunning_lmc_vg gives the selected tuning parameter
+# tuning_lmc_vg gives the selected tuning parameter
 # cv_lmc_vg gives the test RMSE based on selected tuning parameter 
 
 #-------------------------------------------------------------------------------------
@@ -14,6 +14,7 @@
 #seed with default value 2043
 #index_log 0 means log transformation 1 means no transformation
 # const is used in variogram fitting
+# cor.index: positive correlated 1, negative correlated 0
 #-------------------------------------------------------
 
 library(gstat)
@@ -21,7 +22,7 @@ library(dplyr)
 
 fitpred_lmc_vg <- function(train_dat, test_dat,loc_variables = c("longitude","latitude"),
                            variables, kappa =0.5, range = 100,
-                           index_log = c(1,1),const = 0.64)
+                           index_log = c(1,1),const = 0.64,cor.index)
 {
   nv <- length(variables)
 
@@ -46,13 +47,13 @@ fitpred_lmc_vg <- function(train_dat, test_dat,loc_variables = c("longitude","la
     g <- gstat(NULL, variables[1],as.formula(paste(variables[1],"~1")),datg)
     g <- gstat(g, variables[2],as.formula(paste(variables[2],"~1")),datg) # build the model for the two variables
   }
-  if(nv == 3)
-  {
-    # model 
-    g <- gstat(NULL, variables[1],as.formula(paste(variables[1],"~1")),datg)
-    g <- gstat(g, variables[2],as.formula(paste(variables[2],"~1")),datg) # build the model for the two variables
-    g <- gstat(g, variables[3],as.formula(paste(variables[3],"~1")),datg)
-  }
+  # if(nv == 3)
+  # {
+  #   # model 
+  #   g <- gstat(NULL, variables[1],as.formula(paste(variables[1],"~1")),datg)
+  #   g <- gstat(g, variables[2],as.formula(paste(variables[2],"~1")),datg) # build the model for the two variables
+  #   g <- gstat(g, variables[3],as.formula(paste(variables[3],"~1")),datg)
+  # }
 
   vario<-variogram(g,cressie = TRUE,cutoff = maxdist*const) #empirical variogram
   
@@ -60,14 +61,13 @@ fitpred_lmc_vg <- function(train_dat, test_dat,loc_variables = c("longitude","la
   
   # if nugget or pill is less than 0, set is to 0
   parm <- sapply(1:length(g.fit$model),function(x) g.fit$model[[x]][,2])
-  nrp <- nrow(parm)
+  parm[,2] <- parm[,2]*cor.index
   if(sum(parm < 0)!=0)
   {
-    index0 <- which(parm < 0)
-    loc <- sapply(index0,function(x) {c(ceiling(x/nrp),x%%nrp)})
-    for(m in 1:ncol(loc))
+    loc <- which(parm < 0,arr.ind = TRUE)
+    for(m in 1:nrow(loc))
     {
-      g.fit$model[[loc[1,m]]][loc[2,m],2] <- 0
+      g.fit$model[[loc[m,2]]][loc[m,1],2] <- 0
     }
   }
   
@@ -85,7 +85,7 @@ fitpred_lmc_vg <- function(train_dat, test_dat,loc_variables = c("longitude","la
 cokriging_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
                             variables, kappa =0.5, range = 100,
                             index_log = c(1,1),
-                            K,seed = 2043, const = 0.64)
+                            K,seed = 2043, const = 0.64,cor.index)
 {
   set.seed(seed)
   nv <- length(variables)
@@ -103,7 +103,7 @@ cokriging_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
 
     pred <- fitpred_lmc_vg(train_dat, test_dat,loc_variables = loc_variables,
                            variables = variables, kappa = kappa, range = range,
-                           index_log = index_log,const = const) # prediction on test data
+                           index_log = index_log,const = const,cor.index = cor.index) # prediction on test data
     
     test_error <- test_error + colSums((pred - test_dat[,variables])^2,na.rm = TRUE)/num_obs
     
@@ -113,10 +113,10 @@ cokriging_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
 }
 
 #parm[,1] for kappa, parm[,2] for range
-tunning_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
+tuning_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
                    variables, param,
                    index_log = c(1,1),
-                   K,seed = 2043,const = 0.64)
+                   K,seed = 2043,const = 0.64,cor.index)
 {
   nv <- length(variables)
   res_lmc_vg <- matrix(0,nrow(param),nv)
@@ -127,7 +127,7 @@ tunning_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
                                    variables = variables,
                                    index_log = index_log,
                                    kappa = param[j,1],range = param[j,2],
-                                   K = K,seed =seed, const = const)
+                                   K = K,seed =seed, const = const,cor.index = cor.index)
   }
   
   mean_vec <- colMeans(dat[,variables],na.rm = TRUE)
@@ -137,7 +137,7 @@ tunning_lmc_vg <- function(dat,loc_variables = c("longitude","latitude"),
 }
 
 # kapppa and range are two tuning parameters
-cv_lmc_vg <- function(dat, loc_variables, variables, param, index_log, K ,seed, const = 0.64)
+cv_lmc_vg <- function(dat, loc_variables, variables, param, index_log, K ,seed, const = 0.64, cor.index)
 {
   set.seed(seed)
   nv <- length(variables)
@@ -150,13 +150,13 @@ cv_lmc_vg <- function(dat, loc_variables, variables, param, index_log, K ,seed, 
     test_dat  <- dat[cv_group$subsets[cv_group$which==k],]
     train_dat <- dat[cv_group$subsets[cv_group$which!=k],]
     
-    param_select <- tunning_lmc_vg(train_dat, loc_variables = loc_variables, 
+    param_select <- tuning_lmc_vg(train_dat, loc_variables = loc_variables, 
                                    variables = variables, param = param, 
-	               index_log = index_log, K = K ,seed = seed, const = const) # selected tuning parameters
+	               index_log = index_log, K = K ,seed = seed, const = const,cor.index=cor.index) # selected tuning parameters
     
     pred <- fitpred_lmc_vg(train_dat, test_dat, loc_variables = loc_variables, variables = variables, 
                            kappa = as.numeric(param_select[1]),
-                     	range = as.numeric(param_select[2]), index_log = index_log, const = const) # prediction on test data 
+                     	range = as.numeric(param_select[2]), index_log = index_log, const = const,cor.index = cor.index) # prediction on test data 
     
     test_error_lmc_vg <- test_error_lmc_vg + colSums((test_dat[,variables] - pred)^2,na.rm = TRUE)/num_obs
   }
@@ -165,5 +165,5 @@ cv_lmc_vg <- function(dat, loc_variables, variables, param, index_log, K ,seed, 
 }
 
 
-print(c("fitpred_lmc_vg","cokriging_lmc_vg","tunning_lmc_vg","cv_lmc_vg"))
+print(c("fitpred_lmc_vg","cokriging_lmc_vg","tuning_lmc_vg","cv_lmc_vg"))
 

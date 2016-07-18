@@ -45,8 +45,8 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
       index_obsi <- !is.na(train_dat[,varnamei])
     }
     
-   
-    d <-  max(dist(train_dat[index_obsi,loc_variables]))*const
+    maxdist <- max(dist(train_dat[index_obsi,loc_variables]))
+    d <-  maxdist*const
     #fit variogram
     vgi <-variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],trend='2nd',max.dist=d,lambda = index_log[varnamei]) # 2nd means quadratic term
     
@@ -65,7 +65,7 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
   if(fit.vg$cov.pars[2] > d)
   {
     # the estimates of  cov.pars based on fit.vg are too large 
-    res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(0,d),cov.model = "matern") 
+    res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
   }else{
     res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars  ,cov.model = "matern") 
   }
@@ -90,8 +90,9 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
       index_obsi <- !is.na(train_dat[,varnamei])
     }
     
+    maxdist <- max(dist(train_dat[index_obsi,loc_variables]))
+    d <-  maxdist*const
     
-    d <-  max(dist(train_dat[index_obsi,loc_variables]))*const
     vgi <- variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],trend='cte',max.dist=d)  # cte=constant
     fit.vg <-variofit(vgi,cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],weights = method,fix.kappa = TRUE,kappa = kappa_vec[varnamei])
 
@@ -102,12 +103,14 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
       nugget0 <- 0
     }
     
-    if(fit.vg$cov.pars[2] > d)
+    if(fit.vg$cov.pars[2] > maxdist)
     {
        #the estimates of  cov.pars based on fit.vg are too large 
-      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(0,d),cov.model = "matern") 
+      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
+      
+      
     }else{
-      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars  ,cov.model = "matern") 
+      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars,cov.model = "matern") 
     }
     
       kgi = krige.conv(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],loc = test_dat[,loc_variables], krige = krige.control(obj.m = res_liki,lambda=index_log[varnamei], type.krige = "SK"))
@@ -168,14 +171,22 @@ tuning_kriging_old_fixnugget <- function(dat,kappav = seq(0.2,3,0.3),
   # for each kappa value, calculate test RMSE
   for(m in 1:length(kappav))
   {
-    tab0[tab0$kappa == kappav[m],3] <-  kriging_old_fixnugget(dat = dat,loc_variables = loc_variables,
-                                                    varname = varname,varname_2nd = varname_2nd, 
-                                                    varname_ord = varname_ord,  
-                                                    index_log = index_log,  method = method,
-                                                    kappa_vec = rep(kappav[m],length(varname)), 
-                                                    K = K, seed = seed, const = const)
+    resm <- rep(0,length(varname))
+    tryCatch({    resm <-  kriging_old_fixnugget(dat = dat,loc_variables = loc_variables,
+                                                 varname = varname,varname_2nd = varname_2nd, 
+                                                 varname_ord = varname_ord,  
+                                                 index_log = index_log,  method = method,
+                                                 kappa_vec = rep(kappav[m],length(varname)), 
+                                                 K = K, seed = seed, const = const)},
+             error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+    tab0[tab0$kappa == kappav[m],3] <- resm
+
   }
   
+
+  
+  tab0 <- tab0[tab0[,"rmse"]!=0,]
+
   tab0 <- group_by(tab0,variable)
   tabnew <- summarize(tab0, kappa = kappav[which.min(rmse)]) # kappa with smallest RMSE 
   kappa_select <- as.matrix(tabnew[,2])[,1]

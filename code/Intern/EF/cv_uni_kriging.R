@@ -12,7 +12,7 @@ source("code/kriging_new.R")
 library(cvTools)
 
 tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
-                           loc_variables,varname, varname_2nd, varname_ord, 
+                           loc_variables,varname, varname_2nd, varname_ord, fix.nugget = TRUE,
                            index_log_old, index_log_new, method = "cressie",
                            K, seed = 2043, const = 0.64)
 {
@@ -40,7 +40,7 @@ tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
     for(m in 1:length(kappav))
     {
       tab0[tab0$kappa == kappav[m],3] <-  kriging_new(dat = dat,loc_variables = loc_variables,
-                                                      varname = varname,index_log = index_log_new,
+                                                      varname = varname,index_log = index_log_new,fix.nugget = fix.nugget,
                                                       method = method,
                                                       kappa_vec = rep(kappav[m],length(varname)), 
                                                       K = K,seed = seed, const = const)
@@ -58,14 +58,14 @@ tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
 
 #cross validation, in each training data, tuning parameters are selcted and then do prediction in test data 
 cv_kriging <- function(dat, loc_variables,
-                       varname, varname_2nd, varname_ord, index_log_old, index_log_new,
+                       varname, varname_2nd, varname_ord, index_log_old, index_log_new, fix.nugget = TRUE,
                        method = "cressie", kappav = seq(0.2,2.5,0.3),
                        K = 10, seed = 2043, const = 0.64)
 {
   nvar <- length(varname)
   
   dat <- dat[,c(loc_variables,varname)]
-  num0_all <- colSums(!is.na(dat[,varname]))   # number of nonmissing values for each varaible
+  num0_all <- colSums(!is.na(dat[,varname, drop = FALSE]))   # number of nonmissing values for each varaible
   
   # 0 for last year 1 (old) for this year (new)
   test_error0 <- test_error1 <- rep(0,nvar) #output
@@ -91,7 +91,7 @@ cv_kriging <- function(dat, loc_variables,
     kappa_new <- tuning_kriging(train_dat, algorithm = "new",kappav = kappav,
                     loc_variables = loc_variables,
                     varname = varname, varname_2nd = varname_2nd, varname_ord = varname_ord, 
-					          index_log_old = index_log_old, index_log_new = index_log_new, method = method,
+					          index_log_old = index_log_old, index_log_new = index_log_new, fix.nugget = fix.nugget,method = method,
                     K = K, seed = seed, const = const)
     
     # prediction on test data
@@ -100,7 +100,7 @@ cv_kriging <- function(dat, loc_variables,
                          index_log = index_log_old,method = method,kappa_vec = kappa_old, const = const)
    
     pred1k <- fitpred_new(train_dat, test_dat, loc_variables = loc_variables, 
-                          varname = varname, index_log = index_log_new,
+                          varname = varname, index_log = index_log_new, fix.nugget = fix.nugget,
                           method = method, kappa_vec = kappa_new, const = const)
     
     test_error0 <- test_error0 + colSums((pred0k - test_dat[,varname])^2, na.rm = TRUE)/num0_all
@@ -158,7 +158,7 @@ cv_kriging_old <- function(dat, loc_variables,
   nvar <- length(varname)
   
   dat <- dat[,c(loc_variables,varname)]
-  num0_all <- colSums(!is.na(dat[,varname]))   # number of nonmissing values for each varaible
+  num0_all <- colSums(!is.na(dat[,varname, drop = FALSE]))   # number of nonmissing values for each varaible
   
   # 0 for last year 1 (old) for this year (new)
   test_error0  <- rep(0,nvar) #output
@@ -200,7 +200,7 @@ cv_kriging_old <- function(dat, loc_variables,
 
 ###### for this year only
 tuning_kriging_new <- function(dat, kappav = seq(0.2,3,0.3),
-                           loc_variables,varname, index_log_new, method = "cressie",
+                           loc_variables,varname, index_log_new, fix.nugget = TRUE, method = "cressie",
                            K, seed = 2043, const = 0.64)
 {
   
@@ -211,13 +211,18 @@ tuning_kriging_new <- function(dat, kappav = seq(0.2,3,0.3),
 
   for(m in 1:length(kappav))
   {
-    tab0[tab0$kappa == kappav[m],3] <-  kriging_new(dat = dat,loc_variables = loc_variables,
-                                                    varname = varname,index_log = index_log_new,
+     resm <- rep(0,length(varname))
+     tryCatch({resm  <-  kriging_new(dat = dat,loc_variables = loc_variables,
+                                                    varname = varname,index_log = index_log_new, fix.nugget = fix.nugget,
                                                     method = method,
                                                     kappa_vec = rep(kappav[m],length(varname)), 
-                                                    K = K,seed = seed, const = const)
+                                                      K = K,seed = seed, const = const)}, 
+                        error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+     
+     tab0[tab0$kappa == kappav[m],3] <- resm
   }
   
+  tab0 <- tab0[tab0[,"rmse"]!=0,]
   tab0 <- group_by(tab0,variable)
   tabnew <- summarize(tab0, kappa = kappav[which.min(rmse)]) # kappa with smallest RMSE 
   kappa_select <- as.matrix(tabnew[,2])[,1]
@@ -228,14 +233,14 @@ tuning_kriging_new <- function(dat, kappav = seq(0.2,3,0.3),
 
 #cross validation, in each training data, tuning parameters are selcted and then do prediction in test data 
 cv_kriging_new <- function(dat, loc_variables,
-                       varname, index_log_new,
+                       varname, index_log_new, fix.nugget = TRUE,
                        method = "cressie", kappav = seq(0.2,2.5,0.3),
                        K = 10, seed = 2043, const = 0.64)
 {
   nvar <- length(varname)
   
   dat <- dat[,c(loc_variables,varname)]
-  num0_all <- colSums(!is.na(dat[,varname]))   # number of nonmissing values for each varaible
+  num0_all <- colSums(!is.na(dat[,varname, drop = FALSE]))   # number of nonmissing values for each varaible
   
   # 0 for last year 1 (old) for this year (new)
   test_error1 <- rep(0,nvar) #output
@@ -254,7 +259,7 @@ cv_kriging_new <- function(dat, loc_variables,
     # select tuning parameter based on training data
     kappa_new <- tuning_kriging_new(train_dat,kappav = kappav,
                                 loc_variables = loc_variables,
-                                varname = varname,index_log_new = index_log_new, 
+                                varname = varname,index_log_new = index_log_new,  fix.nugget = fix.nugget,
                                 method = method,
                                 K = K, seed = seed, const = const)
     

@@ -108,7 +108,7 @@ kriging_old <- function(dat, loc_variables,
   cv_group <- cvFolds(n = nrow(dat),K = K,type = "random")
   
   nvar <- length(varname)
-  miss_inf <- colSums(!is.na(dat[,varname]))   # number of nonmissing values for each varaible
+  miss_inf <- colSums(!is.na(dat[,varname, drop = FALSE]))   # number of nonmissing values for each varaible
   
   test_error0  <- rep(0,nvar) #output
   names(test_error0)  <- varname
