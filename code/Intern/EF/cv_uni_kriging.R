@@ -264,7 +264,7 @@ cv_kriging_new <- function(dat, loc_variables,
                                 K = K, seed = seed, const = const)
     
     # prediction on test data
-    pred1k <- fitpred_new(train_dat, test_dat, loc_variables = loc_variables, 
+    pred1k <- fitpred_new(train_dat, test_dat, loc_variables = loc_variables, fix.nugget = fix.nugget,
                           varname = varname, index_log = index_log_new,
                           method = method, kappa_vec = kappa_new, const = const)
     

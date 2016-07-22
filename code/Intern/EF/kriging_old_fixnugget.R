@@ -21,7 +21,7 @@
 #the default seed is 2403
 #------------------------------------------------------------------------
 
-fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables, 
+fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables, fix.nugget = TRUE,
                         varname, varname_2nd, varname_ord, index_log,
                         method = "cressie", kappa_vec = rep(0.5,length(varname)), const = 0.64)
   
@@ -62,12 +62,12 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
   
   # fix nugget, if range is greater than d, set it to d
   #estimate parameters with fixed nugget effect from empirical variogram fitting, kappa =0.5 means exponential model
-  if(fit.vg$cov.pars[2] > d)
+  if(fit.vg$cov.pars[2] > maxdist)
   {
     # the estimates of  cov.pars based on fit.vg are too large 
-    res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
+    res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = fix.nugget,nugget = nugget0, fix.kappa=fix.nugget,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
   }else{
-    res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars  ,cov.model = "matern") 
+    res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='2nd',fix.nugget = fix.nugget,nugget = nugget0, fix.kappa=fix.nugget,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars  ,cov.model = "matern") 
   }
   
   # Kriging on test   
@@ -106,11 +106,11 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
     if(fit.vg$cov.pars[2] > maxdist)
     {
        #the estimates of  cov.pars based on fit.vg are too large 
-      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
+      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = fix.nugget,nugget = nugget0, fix.kappa=fix.nugget,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
       
       
     }else{
-      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = TRUE,nugget = nugget0, fix.kappa=TRUE,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars,cov.model = "matern") 
+      res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],trend='cte',fix.nugget = fix.nugget,nugget = nugget0, fix.kappa=fix.nugget,kappa =  kappa_vec[varnamei], lambda = index_log[varnamei],ini.cov.pars = fit.vg$cov.pars,cov.model = "matern") 
     }
     
       kgi = krige.conv(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],loc = test_dat[,loc_variables], krige = krige.control(obj.m = res_liki,lambda=index_log[varnamei], type.krige = "SK"))
@@ -122,7 +122,7 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables,
 }
 
 # For given kappa values, gives corresponding test error based on cross validation 
-kriging_old_fixnugget <- function(dat, loc_variables,
+kriging_old_fixnugget <- function(dat, loc_variables, fix.nugget = TRUE,
                         varname, varname_2nd, varname_ord, index_log,
                         method = "cressie", kappa_vec = rep(0.5,length(varname)),
                         K, seed = 2043, const = 0.64)
@@ -143,7 +143,7 @@ kriging_old_fixnugget <- function(dat, loc_variables,
     test_dat  <- dat[cv_group$subsets[cv_group$which==k],]
     train_dat <- dplyr::setdiff(dat, test_dat)
     
-    predk <- fitpred_old_fixnugget(train_dat, test_dat, loc_variables = loc_variables, 
+    predk <- fitpred_old_fixnugget(train_dat, test_dat, loc_variables = loc_variables, fix.nugget = fix.nugget,
                                    varname = varname,varname_2nd = varname_2nd, 
                                    varname_ord = varname_ord, index_log = index_log,
                          method = method, kappa_vec = kappa_vec, const = const) # prediction on test
@@ -161,7 +161,7 @@ print(c("fitpred_old_fixnugget","kriging_old_fixnugget"))
 
 # select tuning parameter
 tuning_kriging_old_fixnugget <- function(dat,kappav = seq(0.2,3,0.3),
-                           loc_variables,varname, varname_2nd, varname_ord, 
+                           loc_variables, fix.nugget = TRUE,varname, varname_2nd, varname_ord, 
                            index_log, method = "cressie",
                            K, seed = 2043, const = 0.64)
 {
@@ -172,7 +172,7 @@ tuning_kriging_old_fixnugget <- function(dat,kappav = seq(0.2,3,0.3),
   for(m in 1:length(kappav))
   {
     resm <- rep(0,length(varname))
-    tryCatch({    resm <-  kriging_old_fixnugget(dat = dat,loc_variables = loc_variables,
+    tryCatch({    resm <-  kriging_old_fixnugget(dat = dat,loc_variables = loc_variables, fix.nugget = fix.nugget,
                                                  varname = varname,varname_2nd = varname_2nd, 
                                                  varname_ord = varname_ord,  
                                                  index_log = index_log,  method = method,
@@ -196,7 +196,7 @@ tuning_kriging_old_fixnugget <- function(dat,kappav = seq(0.2,3,0.3),
 }
 
 #cross validation, in each training data, tuning parameters are selcted and then do prediction in test data 
-cv_kriging_old_fixnugget <- function(dat, loc_variables,
+cv_kriging_old_fixnugget <- function(dat, loc_variables, fix.nugget = TRUE,
                        varname, varname_2nd, varname_ord, index_log,
                        method = "cressie", kappav = seq(0.2,2.5,0.3),
                        K = 10, seed = 2043, const = 0.64)
@@ -221,14 +221,14 @@ cv_kriging_old_fixnugget <- function(dat, loc_variables,
     
     # select tuning parameter based on training data
     kappa_old <- tuning_kriging_old_fixnugget(train_dat,kappav = kappav,
-                                loc_variables = loc_variables,
+                                loc_variables = loc_variables, fix.nugget = fix.nugget,
                                 varname = varname, varname_2nd, varname_ord = varname_ord, 
                                 index_log = index_log,
                                 method = method,
                                 K = K, seed = seed, const = const)
     
     # prediction on test data
-    pred0k <- fitpred_old_fixnugget(train_dat,test_dat,loc_variables = loc_variables,
+    pred0k <- fitpred_old_fixnugget(train_dat,test_dat,loc_variables = loc_variables, fix.nugget = fix.nugget,
                           varname = varname,varname_2nd = varname_2nd, varname_ord = varname_ord,
                           index_log = index_log, method = method,kappa_vec = kappa_old, const = const)
     
