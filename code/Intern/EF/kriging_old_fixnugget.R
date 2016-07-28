@@ -47,9 +47,9 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables, fix.nugget
 
     maxdist <- max(dist(train_dat[index_obsi,loc_variables]))
     d <-  maxdist*const
-    #fit variogram
+    #empirical variogram
     vgi <-variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],trend='2nd',max.dist=d,lambda = index_log[varnamei]) # 2nd means quadratic term
-
+ # fit variogram with fixed kappa
   fit.vg <-variofit(vgi,cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],weights = method,fix.kappa = TRUE,kappa = kappa_vec[varnamei])
     # by default, the model is exponential
 
@@ -60,8 +60,10 @@ fitpred_old_fixnugget <- function(train_dat, test_dat, loc_variables, fix.nugget
     nugget0 <- 0
   }
 
-  # fix nugget, if range is greater than d, set it to d
-  #estimate parameters with fixed nugget effect from empirical variogram fitting, kappa =0.5 means exponential model
+  #  if range is greater than maxdist, set it to maxdist in initial value
+  #estimate parameters with fixed kappa g, kappa =0.5 means exponential model
+  # if fix.nugget = TRUE, the value of nugget effect is fixed and is from the fit.vg
+  # if fix.nugget = FALSE, then the nugget is estimated by maximizing log lik, and the initial value is the value from fit.vg
   if(fit.vg$cov.pars[2] > maxdist)
   {
     # the estimates of  cov.pars based on fit.vg are too large
@@ -172,6 +174,7 @@ tuning_kriging_old_fixnugget <- function(dat,kappav = seq(0.2,3,0.3),
   for(m in 1:length(kappav))
   {
     resm <- rep(0,length(varname))
+    # tryCatch can skip the error, the loop will not stop because of the error
     tryCatch({    resm <-  kriging_old_fixnugget(dat = dat,loc_variables = loc_variables, fix.nugget = fix.nugget,
                                                  varname = varname,varname_2nd = varname_2nd,
                                                  varname_ord = varname_ord,

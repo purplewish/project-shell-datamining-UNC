@@ -1,6 +1,10 @@
 ########################## in variogram based and mle based univariate kriging method, the smoothness parameter is fixed, which can be viewed as tuning parameter #######
-# tuning_kriging function selects tuning parameter based on cross validation ####
-# cv_kriging function  calculates test error based on selected tuning parameter in train data
+# tuning_kriging function selects tuning parameter based on cross validation (old + new)####
+# cv_kriging function  calculate cross validation error (old + new)
+# tuning_kriging_old() selects tuning parameter based on cross validation based on kriging_old()
+# cv_kriging_old() calculates cross validation error based on kriging_old()
+# tuning_kriging_new() selects tuning parameter based on cross validation based on kriging_new()
+# cv_kriging_new() calculates cross validation error based on kriging_new()
 # index_log_old is the log transformation indicator for last year method
 # index_log_new is the log transfromation indicator for this year
 # fix.nugget: whether nugget is fixed when estimating parameters via MLE
