@@ -7,7 +7,7 @@
 # scale.same: whether assume same scale parameter in the model
 # fit_RF0: fit the bivariate matern model
 # fitpred_RF0: fit and predict
-# cv_RF0: cross validation 
+# cv_RF0: cross validation
 
 
 library(RandomFields)
@@ -15,7 +15,7 @@ library(cvTools)
 fit_RF0 <- function(dat, loc_variables, variables, scale.same = TRUE,index_log = c(1,1))
 {
   nv <- length(variables)
-  # parsimonious multivariate matern model with fixed kappa value
+  # parsimonious multivariate matern model
   nug <- RMmatrix(M = matrix(nc = 2, c(NA, 0, 0, NA)), RMnugget())
 
   if(scale.same)
@@ -43,7 +43,7 @@ fit_RF0 <- function(dat, loc_variables, variables, scale.same = TRUE,index_log =
 
   indexk <- (!is.na(dat[,variables[1]]))&(!is.na(dat[,variables[2]])) # nonmissing index
 
-  #fit parsimonious multivariate matern model with fixed kappa value
+  #fit parsimonious multivariate matern model
   resk <- RFfit(pars.model, x= dat[indexk,loc_variables[1]], y = dat[indexk,loc_variables[2]],
                 data = dat[indexk,variables],split = FALSE)
   return(resk)
@@ -58,7 +58,7 @@ fitpred_RF0 <- function(train_dat, test_dat, loc_variables, variables,
 {
   nv <- length(variables)
 
-  # parsimonious multivariate matern model with fixed kappa value
+  # parsimonious multivariate matern model
   nug <- RMmatrix(M = matrix(nc = 2, c(NA, 0, 0, NA)), RMnugget())
 
   if(scale.same)
@@ -87,7 +87,7 @@ fitpred_RF0 <- function(train_dat, test_dat, loc_variables, variables,
 
   indexk <- (!is.na(train_dat[,variables[1]]))&(!is.na(train_dat[,variables[2]])) # nonmissing index
 
-  #fit parsimonious multivariate matern model with fixed kappa value
+  #fit parsimonious multivariate matern model
   resk <- RFfit(pars.model, x= train_dat[indexk,loc_variables[1]], y = train_dat[indexk,loc_variables[2]],
                 data = train_dat[indexk,variables],split = FALSE)
 

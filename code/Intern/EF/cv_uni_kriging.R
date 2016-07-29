@@ -16,6 +16,7 @@ source("code/kriging_old.R")
 source("code/kriging_new.R")
 library(cvTools)
 
+# select kappa
 tuning_kriging <- function(dat, algorithm = "old",kappav = seq(0.2,3,0.3),
                            loc_variables,varname, varname_2nd, varname_ord, fix.nugget = TRUE,
                            index_log_old, index_log_new, method = "cressie",
@@ -124,7 +125,7 @@ cv_kriging <- function(dat, loc_variables,
 
 
 ##### for last year only
-
+# select kappa
 tuning_kriging_old <- function(dat,kappav = seq(0.2,3,0.3),
                            loc_variables,varname, varname_2nd, varname_ord,
                            index_log_old, method = "cressie",
@@ -143,7 +144,7 @@ tuning_kriging_old <- function(dat,kappav = seq(0.2,3,0.3),
                                                     index_log = index_log_old,  method = method,
                                                     kappa_vec = rep(kappav[m],length(varname)),
                                                     K = K, seed = seed, const = const)
-    print(kappav[m])
+   # print(kappav[m])
   }
 
   tab0 <- group_by(tab0,variable)

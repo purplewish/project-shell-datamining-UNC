@@ -46,8 +46,8 @@ fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log, 
 
 
     # empirical variogram
-    vgi <- variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],max.dist=maxdist*const, lambda = index_log[i])
-    # fit variogram
+    vgi <- variog(coords=train_dat[index_obsi,loc_variables],data=train_dat[index_obsi,varnamei],max.dist=maxdist*const, lambda = index_log[i]) # lambda = 0 log; 1 original scale
+    # fit variogram, if fix.nugget = FALSE, nugget is the initial value
     fit.vg <- variofit(vgi, cov.model = "matern", fix.nugget = FALSE,nugget = vgi$v[1],fix.kappa = TRUE,kappa = kappa_vec[i],weights = method)
 
     # nugget should be non-negative
@@ -57,10 +57,13 @@ fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log, 
     }
 
     # likfit: estimate parameters
-    if(fit.vg$cov.pars[2] >  maxdist )
+    if(fit.vg$cov.pars[2] >  maxdist ) 
     {
+    # cov.pars[2] is range parameter
     # for some variables in some kappa value (seed), the variogram fitting does not give a reasonable resuls for the nugget effect.
     # In this case, the first value of empirical variogram is used as the fixed nugeet effect or the initial value
+    # ini.cov.pars is the initial values for partial sill and range 
+    # if the estimated range is larger than maxdist, the maxdist is used as the initial value for range
      res_liki <- NULL
       tryCatch({res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],
                                      fix.nugget = fix.nugget,nugget = fit.vg$nugget, fix.kappa=TRUE,kappa =  kappa_vec[i],
@@ -68,9 +71,10 @@ fitpred_new <- function(train_dat, test_dat, loc_variables, varname, index_log, 
                error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
      if(is.null(res_liki))
      {
+       # the first value of empirical variogram is set to nugget
        res_liki <- likfit(coords=train_dat[index_obsi,loc_variables],data = train_dat[index_obsi,varnamei],
                           fix.nugget = fix.nugget,nugget = vgi$v[1], fix.kappa=TRUE,kappa =  kappa_vec[i],
-                          lambda = index_log[i],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern")
+                          lambda = index_log[i],ini.cov.pars = c(vgi$v[length(vgi$v)] - vgi$v[1], maxdist),cov.model = "matern") 
      }
 
     #kappa =0.5 means exponential model
